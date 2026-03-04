@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+html {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Wikilink styles */
+.wikilink {
+  color: #a78bfa;
+  text-decoration: none;
+  border-bottom: 1px solid #7c3aed55;
+  transition: border-color 0.15s ease;
+}
+
+.wikilink:hover {
+  border-bottom-color: #a78bfa;
+}
+
+/* Prose overrides for dark mode */
+.prose {
+  color: #d1d5db;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: #f9fafb;
+}
+
+.prose a {
+  color: #a78bfa;
+  text-decoration: none;
+  border-bottom: 1px solid #7c3aed55;
+}
+
+.prose a:hover {
+  border-bottom-color: #a78bfa;
+}
+
+.prose strong {
+  color: #f9fafb;
+}
+
+.prose code {
+  color: #c4b5fd;
+  background: #1f1f2e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+
+.prose pre {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+}
+
+.prose pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.prose blockquote {
+  border-left-color: #374151;
+  color: #9ca3af;
+}
+
+.prose hr {
+  border-color: #1f2937;
+}
