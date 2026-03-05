@@ -62,6 +62,6 @@ jobs:
           # Block merge if new deps introduce high or critical CVEs
           fail-on-severity: high
           # Warn on low/moderate but don't block
-          warn-on-opensfuzz-failures: true
+          warn-on-openssf-scorecard-level: 3
           # Comment a summary on the PR
           comment-summary-in-pr: always
