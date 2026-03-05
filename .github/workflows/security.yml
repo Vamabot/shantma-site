@@ -44,7 +44,7 @@ jobs:
       - name: Run npm audit
         # --audit-level=high: exits non-zero only on high or critical vulnerabilities
         # Low/moderate: reported but do NOT block the build
-        run: npm audit --audit-level=critical # high severity (GHSA-9g9p) requires Next.js 15+ (breaking change); deferred upgrade
+        run: npm audit --audit-level=critical
         continue-on-error: false  # Fail loudly on high/critical
 
   # ─── Job 3: Dependency Review — PRs only ───────────────────────────────────
@@ -69,5 +69,3 @@ jobs:
           # Comment a summary on the PR
           comment-summary-in-pr: always
           # Known pre-existing vulnerabilities — acknowledged, not introduced by this PR
-          # GHSA-h25m-26qc-wcjf: Next.js 14 DoS via RSC — fix requires Next.js 15 (breaking changes, deferred)
-          allow-ghsas: GHSA-h25m-26qc-wcjf
