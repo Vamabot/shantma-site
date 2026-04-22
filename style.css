@@ -170,6 +170,61 @@ section + section { border-top: 1px solid var(--border); }
   margin-bottom: 1rem;
 }
 
+/* ── Hero with background image ── */
+.hero-section {
+  position: relative;
+  min-height: calc(100svh - 56px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.hero-bg-img {
+  position: absolute;
+  inset: 0;
+  background-image: url('machu-picchu.jpg');
+  background-size: cover;
+  background-position: center 30%;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+/* Warm parchment gradient overlay — heavy at bottom where text sits, lighter at top */
+.hero-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(250, 244, 236, 0.15) 0%,
+    rgba(250, 244, 236, 0.45) 40%,
+    rgba(250, 244, 236, 0.82) 65%,
+    rgba(250, 244, 236, 0.97) 100%
+  );
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding-bottom: 5rem;
+}
+
+@media (max-width: 760px) {
+  .hero-bg-img {
+    background-position: 70% 30%;
+  }
+  .hero-bg-overlay {
+    background: linear-gradient(
+      to bottom,
+      rgba(250, 244, 236, 0.25) 0%,
+      rgba(250, 244, 236, 0.6) 40%,
+      rgba(250, 244, 236, 0.92) 65%,
+      rgba(250, 244, 236, 0.99) 100%
+    );
+  }
+}
+
 /* ── Hero headline — no hanging words ── */
 .hero-headline {
   font-family: 'Playfair Display', serif;
