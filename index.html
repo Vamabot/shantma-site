@@ -220,11 +220,11 @@
   var AMBER  = '122,92,10';
   var WARM   = '176,90,40';
 
-  /* ── Node weight classes: small addresses / mid contracts / anchor pools ── */
+  /* ── Node weight classes ── */
   var WEIGHTS = [
-    { r: 1.1, a0: 0.12, a1: 0.42 },   /* small  — 65 % */
-    { r: 1.75, a0: 0.20, a1: 0.55 },  /* mid    — 27 % */
-    { r: 2.6,  a0: 0.30, a1: 0.70 },  /* anchor — 8 %  */
+    { r: 1.1,  a0: 0.12, a1: 0.50 },
+    { r: 1.75, a0: 0.20, a1: 0.65 },
+    { r: 2.6,  a0: 0.30, a1: 0.80 },
   ];
 
   var W=0, H=0, dpr=1, nodes=[], pulses=[], ripples=[], raf;
@@ -232,6 +232,15 @@
   var mouse  = { x:-9999, y:-9999, on: false };
   var smooth = { x:0, y:0 };
   var nextPulseAt = 0;
+
+  /* ── Nucleus state ── */
+  var nucleus = {
+    x: 0, y: 0,    /* target position */
+    gx: 0, gy: 0,  /* smoothed position */
+    energy: 0,     /* 0..1 */
+    phase: 'idle', /* 'converging' | 'dispersing' | 'idle' */
+    dispersed: false,
+  };
 
   function pickWeight() {
     var r = Math.random();
@@ -241,14 +250,31 @@
   function makeNode() {
     var x = Math.random() * W;
     var y = Math.random() * H * 0.80;
-    return {
-      wt: pickWeight(),
-      hx: x, hy: y,
-      x: x,  y: y,
-      vx: 0, vy: 0,
-      ph:  Math.random() * Math.PI * 2,
-      spd: 0.35 + Math.random() * 0.55,
-    };
+    return { wt: pickWeight(), hx: x, hy: y, x: x, y: y, vx: 0, vy: 0,
+             ph: Math.random() * Math.PI * 2, spd: 0.35 + Math.random() * 0.55 };
+  }
+
+  function randomizeHomes() {
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].hx = Math.random() * W;
+      nodes[i].hy = Math.random() * H * 0.80;
+    }
+  }
+
+  function addEnergy(px, py) {
+    var cx = px - nucleus.x, cy = py - nucleus.y;
+    var d  = Math.sqrt(cx*cx + cy*cy);
+    /* if clicking near existing nucleus, nudge it; otherwise reset position */
+    if (nucleus.energy < 0.04 || d > 220) {
+      nucleus.x = px; nucleus.y = py;
+      nucleus.gx = px; nucleus.gy = py;
+    } else {
+      nucleus.x = nucleus.x * 0.65 + px * 0.35;
+      nucleus.y = nucleus.y * 0.65 + py * 0.35;
+    }
+    nucleus.energy = Math.min(1.0, nucleus.energy + 0.22);
+    nucleus.phase  = 'converging';
+    nucleus.dispersed = false;
   }
 
   function resize() {
@@ -261,24 +287,21 @@
     var N = W < 600 ? 34 : 55;
     nodes = [];
     for (var i = 0; i < N; i++) nodes.push(makeNode());
-    pulses = [];
-    ripples = [];
+    pulses = []; ripples = [];
     nextPulseAt = Date.now() + 1200;
+    nucleus.energy = 0; nucleus.phase = 'idle'; nucleus.dispersed = false;
   }
 
-  /* ── Transaction pulse: a sienna packet traveling along one edge ── */
+  /* ── Transaction pulses ── */
   function spawnPulse() {
     var candidates = [];
-    for (var i = 0; i < nodes.length - 1; i++) {
+    for (var i = 0; i < nodes.length - 1; i++)
       for (var j = i + 1; j < nodes.length; j++) {
-        var dx = nodes[i].x - nodes[j].x;
-        var dy = nodes[i].y - nodes[j].y;
+        var dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
         if (dx*dx + dy*dy < LINK_DIST*LINK_DIST) candidates.push([i,j]);
       }
-    }
     if (!candidates.length) return;
     var e = candidates[Math.floor(Math.random() * candidates.length)];
-    /* randomly pick direction */
     if (Math.random() < 0.5) e = [e[1], e[0]];
     pulses.push({ from: e[0], to: e[1], t: 0, spd: 0.010 + Math.random() * 0.008 });
     nextPulseAt = Date.now() + 1600 + Math.random() * 2400;
@@ -287,16 +310,34 @@
   function frame() {
     ctx.clearRect(0, 0, W, H);
     var now = Date.now();
-    var t   = now * 0.00036;  /* ambient time */
+    var t   = now * 0.00036;
 
-    /* smooth cursor — heavy lag = viscous feel */
+    /* ── Cursor smooth ── */
     if (mouse.on) {
       if (smooth.x === 0 && smooth.y === 0) { smooth.x = mouse.x; smooth.y = mouse.y; }
       smooth.x += (mouse.x - smooth.x) * 0.048;
       smooth.y += (mouse.y - smooth.y) * 0.048;
     }
 
-    /* cursor glow — very soft */
+    /* ── Nucleus decay ── */
+    if (nucleus.energy > 0) {
+      nucleus.energy *= 0.9985; /* slow entropy — ~25s full drain */
+      if (nucleus.energy < 0.001) nucleus.energy = 0;
+
+      /* smooth nucleus position */
+      nucleus.gx += (nucleus.x - nucleus.gx) * 0.04;
+      nucleus.gy += (nucleus.y - nucleus.gy) * 0.04;
+
+      /* transition to dispersing: randomize homes once, let spring carry them out */
+      if (!nucleus.dispersed && nucleus.energy < 0.18) {
+        nucleus.dispersed = true;
+        nucleus.phase = 'dispersing';
+        randomizeHomes();
+      }
+      if (nucleus.energy === 0) nucleus.phase = 'idle';
+    }
+
+    /* ── Cursor glow ── */
     if (mouse.on) {
       var grd = ctx.createRadialGradient(smooth.x, smooth.y, 0, smooth.x, smooth.y, 380);
       grd.addColorStop(0,   'rgba(' + WARM + ',0.032)');
@@ -306,34 +347,63 @@
       ctx.fillRect(0, 0, W, H);
     }
 
+    /* ── Nucleus glow — pulses with energy ── */
+    if (nucleus.energy > 0.02) {
+      var pulse = 1 + Math.sin(now * 0.004) * 0.12; /* gentle breath */
+      var nr = 60 + nucleus.energy * 160 * pulse;
+      var ng = ctx.createRadialGradient(nucleus.gx, nucleus.gy, 0, nucleus.gx, nucleus.gy, nr);
+      ng.addColorStop(0,   'rgba(' + SIENNA + ',' + (nucleus.energy * 0.10) + ')');
+      ng.addColorStop(0.4, 'rgba(' + SIENNA + ',' + (nucleus.energy * 0.04) + ')');
+      ng.addColorStop(1,   'rgba(' + SIENNA + ',0)');
+      ctx.fillStyle = ng;
+      ctx.fillRect(0, 0, W, H);
+    }
+
     /* ── Physics ── */
+    /* ambient amplitude rises slightly when dispersing (entropy = kinetic energy) */
+    var ambAmp = nucleus.phase === 'dispersing'
+      ? 4 + (1 - nucleus.energy / 0.18) * 3.5
+      : 4;
+
     for (var i = 0; i < nodes.length; i++) {
       var n = nodes[i];
 
-      /* ambient oscillation — slow breathing */
-      var ambX = Math.sin(t * n.spd + n.ph)              * 4;
-      var ambY = Math.cos(t * n.spd * 0.68 + n.ph + 1.4) * 4;
+      /* ambient — no perfect stillness */
+      var ambX = Math.sin(t * n.spd + n.ph)              * ambAmp;
+      var ambY = Math.cos(t * n.spd * 0.68 + n.ph + 1.4) * ambAmp;
 
-      /* soft spring to home + ambient */
+      /* spring to home */
       var ax = (n.hx + ambX - n.x) * 0.014;
       var ay = (n.hy + ambY - n.y) * 0.014;
 
-      /* cursor gravity — linear falloff, no singularity */
+      /* cursor gravity — wide, gentle */
       if (mouse.on) {
-        var cx   = smooth.x - n.x;
-        var cy   = smooth.y - n.y;
-        var dist = Math.sqrt(cx*cx + cy*cy);
-        var R    = 380;
-        if (dist < R && dist > 0.5) {
-          /* force = k * (1 - dist/R)  →  linear, zero at boundary */
-          var k = 0.55;
-          var falloff = 1 - dist / R;
-          ax += (cx / dist) * k * falloff;
-          ay += (cy / dist) * k * falloff;
+        var mcx = smooth.x - n.x, mcy = smooth.y - n.y;
+        var md  = Math.sqrt(mcx*mcx + mcy*mcy);
+        var MR  = 380;
+        if (md < MR && md > 0.5) {
+          var mf = 0.55 * (1 - md / MR);
+          ax += (mcx / md) * mf;
+          ay += (mcy / md) * mf;
         }
       }
 
-      /* high damping = viscous/zen — no oscillation */
+      /* nucleus pull — scales with energy, reaches entire canvas */
+      if (nucleus.energy > 0.02) {
+        var ncx = nucleus.gx - n.x, ncy = nucleus.gy - n.y;
+        var nd  = Math.sqrt(ncx*ncx + ncy*ncy);
+        if (nd > 0.5) {
+          /* force = energy^0.6 * (base + proximity boost)
+             — strong pull from far away, converges to a tight cluster */
+          var ef = Math.pow(nucleus.energy, 0.6);
+          var proximity = Math.max(0, 1 - nd / Math.max(W, H));
+          var nf = ef * (0.55 + proximity * 1.2);
+          ax += (ncx / nd) * nf;
+          ay += (ncy / nd) * nf;
+        }
+      }
+
+      /* overdamped — viscous, zen */
       n.vx = (n.vx + ax) * 0.925;
       n.vy = (n.vy + ay) * 0.925;
       n.x += n.vx;
@@ -344,8 +414,7 @@
     ctx.lineWidth = 0.5;
     for (var i = 0; i < nodes.length - 1; i++) {
       for (var j = i + 1; j < nodes.length; j++) {
-        var dx = nodes[i].x - nodes[j].x;
-        var dy = nodes[i].y - nodes[j].y;
+        var dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
         var d2 = dx*dx + dy*dy;
         if (d2 < LINK_DIST * LINK_DIST) {
           var alpha = (1 - Math.sqrt(d2) / LINK_DIST) * 0.085;
@@ -360,32 +429,29 @@
 
     /* ── Transaction pulses ── */
     if (now > nextPulseAt && pulses.length < 4) spawnPulse();
-
     for (var p = pulses.length - 1; p >= 0; p--) {
-      var pulse = pulses[p];
-      pulse.t += pulse.spd;
-      if (pulse.t >= 1) { pulses.splice(p, 1); continue; }
-      var na = nodes[pulse.from], nb = nodes[pulse.to];
-      var px = na.x + (nb.x - na.x) * pulse.t;
-      var py = na.y + (nb.y - na.y) * pulse.t;
-      /* ease in/out opacity envelope */
-      var env = pulse.t < 0.2 ? pulse.t / 0.2 : pulse.t > 0.8 ? (1 - pulse.t) / 0.2 : 1;
+      var pu = pulses[p];
+      pu.t += pu.spd;
+      if (pu.t >= 1) { pulses.splice(p, 1); continue; }
+      var na = nodes[pu.from], nb = nodes[pu.to];
+      var px = na.x + (nb.x - na.x) * pu.t;
+      var py = na.y + (nb.y - na.y) * pu.t;
+      var env = pu.t < 0.2 ? pu.t / 0.2 : pu.t > 0.8 ? (1 - pu.t) / 0.2 : 1;
       ctx.beginPath();
       ctx.arc(px, py, 1.6, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(' + SIENNA + ',' + (env * 0.72) + ')';
       ctx.fill();
     }
 
-    /* ── Touch ripples (block confirmation rings) ── */
+    /* ── Ripples ── */
     for (var r = ripples.length - 1; r >= 0; r--) {
       var rip = ripples[r];
       rip.t += 0.016;
       if (rip.t > 1) { ripples.splice(r, 1); continue; }
-      var ease = 1 - Math.pow(1 - rip.t, 3);  /* ease-out cubic */
-      var rAlpha  = (1 - rip.t) * 0.28;
-      var rRadius = ease * 90;
+      var ease   = 1 - Math.pow(1 - rip.t, 3);
+      var rAlpha = (1 - rip.t) * 0.32;
       ctx.beginPath();
-      ctx.arc(rip.x, rip.y, rRadius, 0, Math.PI * 2);
+      ctx.arc(rip.x, rip.y, ease * 90, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(' + SIENNA + ',' + rAlpha + ')';
       ctx.lineWidth = 0.8;
       ctx.stroke();
@@ -397,11 +463,16 @@
       var w = WEIGHTS[n.wt];
       var prox = 0;
       if (mouse.on) {
-        var cx = smooth.x - n.x;
-        var cy = smooth.y - n.y;
-        prox = Math.max(0, 1 - Math.sqrt(cx*cx + cy*cy) / 380);
+        var mcx = smooth.x - n.x, mcy = smooth.y - n.y;
+        prox = Math.max(0, 1 - Math.sqrt(mcx*mcx + mcy*mcy) / 380);
       }
-      var r = w.r + prox * 0.9;
+      /* also boost brightness near nucleus when converging */
+      if (nucleus.energy > 0.02) {
+        var ncx = nucleus.gx - n.x, ncy = nucleus.gy - n.y;
+        var np = Math.max(0, 1 - Math.sqrt(ncx*ncx + ncy*ncy) / 160) * nucleus.energy;
+        prox = Math.max(prox, np);
+      }
+      var r = w.r + prox * 1.1;
       var a = w.a0 + prox * (w.a1 - w.a0);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
@@ -415,28 +486,29 @@
   /* ── Input ── */
   function setMouse(cx, cy) {
     var rect = hero.getBoundingClientRect();
-    mouse.x = cx - rect.left;
-    mouse.y = cy - rect.top;
-    mouse.on = true;
+    mouse.x = cx - rect.left; mouse.y = cy - rect.top; mouse.on = true;
   }
-  function clearMouse() { mouse.on = false; }
+  function doClick(cx, cy) {
+    var rect = hero.getBoundingClientRect();
+    var px = cx - rect.left, py = cy - rect.top;
+    addEnergy(px, py);
+    ripples.push({ x: px, y: py, t: 0 });
+  }
 
   hero.addEventListener('mousemove',  function(e) { setMouse(e.clientX, e.clientY); });
-  hero.addEventListener('mouseleave', clearMouse);
+  hero.addEventListener('mouseleave', function()  { mouse.on = false; });
+  hero.addEventListener('click',      function(e) { doClick(e.clientX, e.clientY); });
   hero.addEventListener('touchmove',  function(e) {
     setMouse(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
   hero.addEventListener('touchstart', function(e) {
-    var rect = hero.getBoundingClientRect();
-    ripples.push({ x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top, t: 0 });
+    doClick(e.touches[0].clientX, e.touches[0].clientY);
     setMouse(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
-  hero.addEventListener('touchend', clearMouse);
+  hero.addEventListener('touchend', function() { mouse.on = false; });
 
   window.addEventListener('resize', function() {
-    cancelAnimationFrame(raf);
-    resize();
-    raf = requestAnimationFrame(frame);
+    cancelAnimationFrame(raf); resize(); raf = requestAnimationFrame(frame);
   });
 
   resize();
