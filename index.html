@@ -278,7 +278,7 @@
       nuc.x = nuc.x * 0.70 + px * 0.30;
       nuc.y = nuc.y * 0.70 + py * 0.30;
     }
-    nuc.energy = Math.min(1.0, nuc.energy + 0.18);
+    nuc.energy = Math.min(1.0, nuc.energy + 0.09);
     nuc.dispersed = false;
     ripples.push({ x: px, y: py, t: 0 });
   }
@@ -362,12 +362,17 @@
     for (var i = 0; i < nodes.length; i++) {
       var n = nodes[i];
 
-      /* KEY: spring target lerps from home → nucleus as energy rises.
-         This means ONE spring force handles both idle return AND nucleus pull.
-         No two forces fighting. Far nodes converge because spring reaches all. */
-      var e = nuc.energy;
-      var tx = n.hx + (nuc.gx - n.hx) * e;
-      var ty = n.hy + (nuc.gy - n.hy) * e;
+      /* Spring target lerps home → nucleus, but reach is distance-gated.
+         At low energy only nearby nodes feel it; reach expands with each click.
+         Far nodes trail in gradually — close ones always lead. */
+      var e   = nuc.energy;
+      var ndx0 = nuc.gx - n.x, ndy0 = nuc.gy - n.y;
+      var nd0  = Math.sqrt(ndx0*ndx0 + ndy0*ndy0);
+      var maxReach = Math.sqrt(W*W + H*H);
+      var reach    = 120 + e * (maxReach - 120); /* expands from 120px to full diagonal */
+      var localE   = nd0 < reach ? e * (1 - nd0 / reach) : 0;
+      var tx = n.hx + (nuc.gx - n.hx) * localE;
+      var ty = n.hy + (nuc.gy - n.hy) * localE;
 
       /* Ambient oscillation — suppressed near nucleus center.
          Zone of near-stillness grows with energy (max ~55px radius). */
