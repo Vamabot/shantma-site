@@ -6,18 +6,18 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #0E0905;
-  --surface:   #1A1008;
-  --surface2:  #231509;
-  --border:    rgba(176, 90, 40, 0.15);
-  --border-mid:rgba(176, 90, 40, 0.28);
-  --sienna:    #B05A28;
-  --sienna-dim:rgba(176, 90, 40, 0.45);
-  --amber:     #9E7A18;
-  --amber-dim: rgba(158, 122, 24, 0.45);
-  --text:      #EFE0C5;
-  --text-mid:  rgba(239,224,197,0.58);
-  --text-dim:  rgba(239,224,197,0.32);
+  --bg:        #FAF4EC;
+  --surface:   #F3EAD8;
+  --surface2:  #EDE0C8;
+  --border:    rgba(100, 40, 10, 0.1);
+  --border-mid:rgba(100, 40, 10, 0.2);
+  --sienna:    #8B3A1A;
+  --sienna-dim:rgba(139, 58, 26, 0.4);
+  --amber:     #7A5C0A;
+  --amber-dim: rgba(122, 92, 10, 0.4);
+  --text:      #1C0F08;
+  --text-mid:  rgba(28, 15, 8, 0.6);
+  --text-dim:  rgba(28, 15, 8, 0.35);
 }
 
 html { scroll-behavior: smooth; }
@@ -58,7 +58,7 @@ nav {
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 100;
-  background: rgba(14, 9, 5, 0.88);
+  background: rgba(250, 244, 236, 0.9);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
 }
@@ -187,7 +187,7 @@ section + section { border-top: 1px solid var(--border); }
 
 .btn-primary {
   background: var(--sienna);
-  color: var(--bg);
+  color: #FAF4EC;
   border: 1px solid var(--sienna);
 }
 .btn-primary:hover { background: #C4692E; border-color: #C4692E; }
@@ -277,7 +277,7 @@ footer {
     flex-direction: column;
     align-items: flex-start;
     gap: 0;
-    background: rgba(14,9,5,0.97);
+    background: rgba(250, 244, 236, 0.98);
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1.2rem 1.2rem;
   }
