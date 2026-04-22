@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-In</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    /* Gate screen */
+    #gate {
+      position: fixed;
+      inset: 0;
+      background: #F5EAD7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .gate-inner {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .gate-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      color: #8B2E0A;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.3px;
+    }
+
+    .gate-sub {
+      font-size: 0.8rem;
+      color: rgba(44,24,16,0.4);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 2.5rem;
+    }
+
+    .gate-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .gate-input {
+      background: #FFFDF8;
+      border: 1px solid rgba(139,46,10,0.22);
+      color: #2C1810;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 300;
+      padding: 0.8rem 1.4rem;
+      border-radius: 4px;
+      outline: none;
+      text-align: center;
+      letter-spacing: 0.15em;
+      width: 200px;
+      transition: border-color 0.2s;
+    }
+
+    .gate-input:focus { border-color: #8B2E0A; }
+
+    .gate-btn {
+      background: transparent;
+      color: #8B2E0A;
+      border: 1px solid rgba(139,46,10,0.38);
+      padding: 0.7rem 2.2rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      transition: all 0.22s ease;
+    }
+
+    .gate-btn:hover { background: #8B2E0A; color: #F5EAD7; }
+
+    .gate-error {
+      font-size: 0.75rem;
+      color: rgba(139,46,10,0.6);
+      letter-spacing: 0.06em;
+      min-height: 1.2em;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .gate-error.visible { opacity: 1; }
+
+    /* App hidden until unlocked */
+    #app { display: none; height: 100%; }
+    #app.unlocked { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- Password gate -->
+  <div id="gate">
+    <div class="gate-inner">
+      <h1 class="gate-title">Our Check-In</h1>
+      <p class="gate-sub">Private</p>
+      <form class="gate-form" onsubmit="tryUnlock(event)">
+        <input class="gate-input" id="pw" type="password" placeholder="password" autocomplete="off" autofocus>
+        <button class="gate-btn" type="submit">Enter</button>
+        <p class="gate-error" id="gate-error">Try again</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- App (injected inline, hidden until unlocked) -->
+  <div id="app">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Check-In</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @keyframes ripple {
+            0% { width: 0; height: 0; opacity: 0.4; }
+            100% { width: 300px; height: 300px; opacity: 0; }
+        }
+
+        @keyframes buttonPress {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.97); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInSlow {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInButton {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes blurDesaturateBg {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        @keyframes typewrite {
+            from { max-width: 0; }
+            to { max-width: 100%; }
+        }
+
+        :root {
+            --bg:           #F5EAD7;
+            --bg-warm:      #EDD9BC;
+            --surface:      #FFFDF8;
+            --surface2:     #FBF5EB;
+            --border:       rgba(139, 46, 10, 0.12);
+            --border-mid:   rgba(139, 46, 10, 0.22);
+            --border-strong:rgba(139, 46, 10, 0.38);
+            --terra:        #8B2E0A;
+            --terra-light:  #B84020;
+            --amber:        #A0720A;
+            --amber-light:  #C4941A;
+            --text:         #2C1810;
+            --text-mid:     rgba(44, 24, 16, 0.65);
+            --text-muted:   rgba(44, 24, 16, 0.4);
+            --text-sub:     rgba(44, 24, 16, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            height: 100dvh;
+            overflow: hidden;
+            position: relative;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ── Header ── */
+        .header {
+            padding: 1.1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: rgba(245, 234, 215, 0.85);
+            backdrop-filter: blur(8px);
+            flex-shrink: 0;
+        }
+
+        .header-left h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            color: var(--terra);
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            transition: opacity 0.25s ease;
+        }
+
+        .header-left h1:hover { opacity: 0.65; }
+
+        .facilitator-toggle {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .facilitator-toggle label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 400;
+        }
+
+        .toggle-group {
+            display: flex;
+            background: transparent;
+            border-radius: 4px;
+            border: 1px solid var(--border-strong);
+            overflow: hidden;
+        }
+
+        .toggle-btn {
+            padding: 0.4rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 400;
+            letter-spacing: 0.04em;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .toggle-btn.active {
+            background: var(--terra);
+            color: var(--bg);
+            font-weight: 500;
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background: rgba(139, 46, 10, 0.07);
+            color: var(--terra);
+        }
+
+        /* ── Main ── */
+        .main {
+            flex: 1;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 640px;
+            height: 100%;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .screen.active { display: flex; flex-direction: column; }
+        .screen-landing.active { justify-content: center; }
+        .screen-section.active { display: flex; flex-direction: column; }
+
+        /* ── Landing ── */
+        .screen-landing {
+            text-align: center;
+            padding-top: 1.5rem;
+        }
+
+        .landing-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.2rem, 6vw, 3.6rem);
+            color: var(--terra);
+            margin-bottom: 0.3rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            transition: opacity 0.4s ease;
+        }
+
+        .landing-subtitle {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: clamp(1.1rem, 3vw, 1.35rem);
+            color: var(--amber);
+            margin-bottom: 0.9rem;
+            font-weight: 400;
+        }
+
+        .landing-date {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            min-height: 1.5em;
+        }
+
+        .landing-description {
+            background: var(--surface);
+            padding: 1.6rem 2rem;
+            border-radius: 8px;
+            margin-bottom: 2.5rem;
+            border: 1px solid var(--border);
+            text-align: left;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            color: var(--text-mid);
+        }
+
+        .landing-description p { margin-bottom: 0.65rem; }
+        .landing-description p:last-child { margin-bottom: 0; }
+
+        .heart-emoji { display: inline-block; }
+
+        .btn-begin {
+            background: transparent;
+            color: var(--terra);
+            border: 1px solid var(--border-strong);
+            padding: 0.85rem 2.8rem;
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: background 0.22s ease, color 0.22s ease, border-color 0.22s ease;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .btn-begin:hover {
+            background: var(--terra);
+            color: var(--bg);
+            border-color: var(--terra);
+        }
+
+        .btn-begin::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,46,10,0.25), transparent);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .btn-begin:active::before { animation: ripple 0.6s ease-out; }
+
+        /* ── Section cards — full height, consistent ── */
+        .screen-section {
+            background: var(--surface);
+            padding: 2rem 2.2rem 1.8rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(139, 46, 10, 0.07), 0 1px 4px rgba(139, 46, 10, 0.05);
+            position: relative;
+            touch-action: pan-y;
+            flex-direction: column;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .screen-section.grabbing { cursor: grabbing; }
+
+        /* Header: title left, timer right — vertically centered as a unit */
+        .section-header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1.4rem;
+            padding-bottom: 1.2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-number {
+            font-size: 0.65rem;
+            color: var(--amber);
+            font-weight: 500;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            overflow: hidden;
+            white-space: nowrap;
+            margin-bottom: 0.3rem;
+        }
+
+        .section-number span {
+            display: inline-block;
+            animation: typewrite 0.6s steps(20, end);
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.65rem;
+            color: var(--terra);
+            font-weight: 700;
+            letter-spacing: -0.2px;
+            line-height: 1.15;
+        }
+
+        /* ── Timer — right column of header grid ── */
+        .timer-wrap {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .timer {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 400;
+            color: var(--amber);
+            font-variant-numeric: tabular-nums;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.25s ease;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+
+        .timer:hover { color: var(--terra); }
+        .timer.paused { opacity: 0.35; }
+        .timer.expired { color: var(--text-muted); }
+
+        .timer-status {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            text-align: right;
+            margin-top: 0.2rem;
+            min-height: 1em;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .timer-status.visible { opacity: 1; }
+        .timer-status.paused-hidden { display: none; }
+
+        .timer-label {
+            font-size: 0.58rem;
+            color: var(--text-sub);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-align: right;
+            margin-top: 0.15rem;
+        }
+
+        .take-your-time {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            text-align: right;
+            letter-spacing: 0.08em;
+            margin-top: 0.2rem;
+            opacity: 0;
+            animation: fadeInSlow 0.4s ease forwards;
+        }
+
+        .section-content {
+            margin-bottom: 1.4rem;
+            flex: 1;
+        }
+
+        .prompt {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: var(--text);
+            margin-bottom: 1rem;
+            font-weight: 400;
+        }
+
+        .sub-prompt {
+            font-size: 0.85rem;
+            color: var(--text-mid);
+            margin-left: 0.8rem;
+            margin-bottom: 0.8rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--border-mid);
+            line-height: 1.7;
+            font-weight: 300;
+        }
+
+        /* ── Footer — 3-col grid so Next never moves ── */
+        .section-footer {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding-top: 1.2rem;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .section-footer .btn-previous {
+            justify-self: start;
+        }
+
+        .section-footer .progress-dots {
+            justify-self: center;
+        }
+
+        .section-footer .btn-next {
+            justify-self: end;
+        }
+
+        /* Invisible spacer when no Back button */
+        .footer-spacer {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .progress-dots {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .progress-dots .dot {
+            width: 18px;
+            height: 2px;
+            border-radius: 1px;
+            background: var(--terra);
+            opacity: 0.15;
+            transition: opacity 0.3s ease;
+        }
+
+        .progress-dots .dot.filled { opacity: 0.6; }
+
+        .btn-next {
+            background: var(--terra);
+            color: var(--bg);
+            border: none;
+            padding: 0.65rem 1.5rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: all 0.22s ease;
+            box-shadow: 0 2px 8px rgba(139, 46, 10, 0.2);
+            white-space: nowrap;
+        }
+
+        .btn-next:hover {
+            background: var(--terra-light);
+            box-shadow: 0 4px 14px rgba(139, 46, 10, 0.28);
+        }
+
+        .btn-next:active { animation: buttonPress 0.3s ease; }
+
+        .btn-previous {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border-mid);
+            padding: 0.55rem 1.1rem;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+            transition: all 0.22s ease;
+        }
+
+        .btn-previous:hover {
+            border-color: var(--border-strong);
+            color: var(--terra);
+            background: rgba(139, 46, 10, 0.04);
+        }
+
+        .btn-previous:active { animation: buttonPress 0.3s ease; }
+
+        /* ── Repair link — subtle, inside card, bottom right ── */
+        .repair-link {
+            font-size: 0.62rem;
+            color: var(--text-sub);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s ease, opacity 0.2s ease;
+            opacity: 0.5;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            text-decoration-color: transparent;
+        }
+
+        .repair-link:hover {
+            color: var(--terra);
+            opacity: 1;
+            text-decoration-color: var(--terra);
+        }
+
+        /* ── Dual timer layout ── */
+        .dual-timer-wrap {
+            text-align: right;
+        }
+
+        .dual-timer-label {
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            margin-bottom: 0.35rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .dual-timer-row {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            justify-content: flex-end;
+        }
+
+        .dual-timer-person { text-align: center; }
+        .dual-timer-person .timer { font-size: 1.7rem; }
+
+        /* Closing screen — natural height so it scrolls fully */
+        .screen-closing {
+            height: auto !important;
+            min-height: unset !important;
+        }
+
+        /* Start Over button on closing screen must be visible */
+        .screen-closing .btn-begin {
+            opacity: 1 !important;
+            animation: none !important;
+        }
+
+        /* ── Closing screen ── */
+        .main.scrollable {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            align-items: flex-start;
+        }
+        .screen-closing {
+            text-align: center;
+            padding-top: 2.5rem;
+            transition: background-color 15s ease 2s;
+        }
+
+        .closing-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            color: var(--terra);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .closing-subtitle {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 1.2rem;
+            color: var(--amber);
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+        }
+
+        .closing-content {
+            background: var(--surface);
+            padding: 2.5rem;
+            border-radius: 8px;
+            margin-bottom: 2.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .suggestion {
+            font-size: 1rem;
+            color: var(--text-mid);
+            margin: 1rem 0;
+            line-height: 1.75;
+            opacity: 0;
+            animation: fadeInSlow 0.6s ease forwards;
+            font-weight: 300;
+        }
+
+        .suggestion:nth-child(1) { animation-delay: 0.3s; }
+        .suggestion:nth-child(2) { animation-delay: 0.6s; }
+        .suggestion:nth-child(3) { animation-delay: 0.9s; }
+        .suggestion:nth-child(4) { animation-delay: 1.2s; }
+        .suggestion:nth-child(5) { animation-delay: 1.5s; }
+
+        .emoji { font-size: 1.2rem; margin: 0 0.35rem; opacity: 0.85; }
+
+        .closing-final {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            margin-top: 2rem;
+            opacity: 0;
+            animation: fadeInSlow 0.6s ease 2s forwards;
+        }
+
+        /* ── Repair overlay ── */
+        .repair-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .repair-overlay.active {
+            display: flex;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .repair-overlay.active::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: rgba(44, 24, 16, 0.35);
+            backdrop-filter: blur(6px) saturate(0.5);
+            animation: blurDesaturateBg 0.4s ease forwards;
+        }
+
+        .repair-modal {
+            position: relative;
+            z-index: 1;
+            background: var(--surface);
+            padding: 3.5rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-mid);
+            text-align: center;
+            max-width: 460px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(44, 24, 16, 0.2);
+        }
+
+        .repair-modal h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--terra);
+            margin-bottom: 1.1rem;
+            font-weight: 700;
+        }
+
+        .repair-modal p {
+            font-size: 0.95rem;
+            color: var(--text-mid);
+            margin-bottom: 2.5rem;
+            line-height: 1.8;
+            font-weight: 300;
+        }
+
+        .btn-resume {
+            background: transparent;
+            color: var(--terra);
+            border: 1px solid var(--border-strong);
+            padding: 0.8rem 2.4rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: all 0.22s ease;
+        }
+
+        .btn-resume:hover {
+            background: var(--terra);
+            color: var(--bg);
+        }
+
+        /* ── Desktop: card feels app-like, not stretched ── */
+        @media (min-width: 769px) {
+            body, .container { height: 100dvh; overflow: hidden; }
+
+            .main {
+                align-items: center;
+                padding: 2rem;
+            }
+
+            .screen {
+                max-width: 680px;
+                max-height: 680px;
+                height: auto;
+            }
+
+            .screen.active {
+                height: 100%;
+                max-height: min(680px, calc(100dvh - 100px));
+            }
+
+            .screen-landing {
+                max-height: unset;
+                height: auto;
+            }
+
+            .screen-section {
+                height: 100%;
+            }
+
+            /* Closing screen scrolls on desktop too if needed */
+            .main.scrollable {
+                align-items: flex-start;
+                padding-top: 2rem;
+            }
+
+            .main.scrollable .screen-closing {
+                margin: 0 auto;
+                max-width: 680px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .landing-title { font-size: 2.2rem; }
+            .section-title { font-size: 1.45rem; }
+            .timer { font-size: 1.75rem; }
+            .screen-section { padding: 1.5rem 1.4rem 1.3rem; }
+            .header {
+                padding: 0.9rem 1.1rem;
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+            .facilitator-toggle {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* iPhone 12 Pro and similar — fits without scroll */
+        @media (max-width: 430px) and (max-height: 932px) {
+            .main { padding: 0.85rem; }
+
+            .screen-landing { padding-top: 0; }
+            .landing-title { font-size: 1.9rem; margin-bottom: 0.2rem; }
+            .landing-date { margin-bottom: 1rem; font-size: 0.65rem; }
+            .landing-description {
+                padding: 1rem 1.1rem;
+                margin-bottom: 1.2rem;
+                font-size: 0.88rem;
+                line-height: 1.65;
+            }
+            .landing-description p { margin-bottom: 0.4rem; }
+            .btn-begin { padding: 0.75rem 2rem; }
+
+            .screen-section { padding: 1.2rem 1.2rem 1.1rem; }
+
+            .section-header { margin-bottom: 1rem; padding-bottom: 0.9rem; }
+            .section-number { margin-bottom: 0.2rem; }
+            .section-title { font-size: 1.3rem; }
+            .timer { font-size: 1.55rem; }
+            .timer-label { display: none; }
+
+            .section-content { margin-bottom: 0; }
+            .prompt { font-size: 0.95rem; line-height: 1.7; margin-bottom: 0.75rem; }
+            .sub-prompt { font-size: 0.82rem; margin-bottom: 0.6rem; line-height: 1.6; }
+
+            .section-footer { padding-top: 1rem; }
+            .progress-dots .dot { width: 13px; }
+            .btn-next { padding: 0.6rem 1.2rem; font-size: 0.72rem; }
+            .btn-previous { padding: 0.5rem 0.9rem; font-size: 0.68rem; }
+
+            .repair-link { margin-top: 0.7rem; }
+
+            .header { padding: 0.7rem 0.9rem; gap: 0.4rem; }
+            .header-left h1 { font-size: 1.1rem; }
+        }
+
+        @media (max-width: 480px) {
+            .dual-timer-person .timer { font-size: 1.4rem; }
+            .section-header {
+                grid-template-columns: 1fr auto;
+                gap: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" id="header">
+            <div class="header-left">
+                <h1 onclick="goToScreen(0)">Our Check-In</h1>
+            </div>
+            <div class="facilitator-toggle">
+                <label>Facilitator:</label>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" data-facilitator="Shant">Shant</button>
+                    <button class="toggle-btn" data-facilitator="Aubrey">Aubrey</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main" id="main">
+            <!-- Landing Screen -->
+            <div class="screen screen-landing active">
+                <h2 class="landing-title" id="landing-title">Shant & Aubrey</h2>
+                <p class="landing-date" id="landing-date"></p>
+
+                <div class="landing-description">
+                    <p>Just us, sitting close, phones down, checking in, and staying in step <span class="heart-emoji">❤️</span></p>
+                    <p>When we're done, we do something small together (like tea, cuddles, or short walk).</p>
+                    <p>That part matters too.</p>
+                </div>
+
+                <button class="btn-begin" id="btn-begin" onclick="goToScreen(1)">Let's go →</button>
+            </div>
+
+            <!-- Section 1: Appreciation -->
+            <div class="screen screen-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-number"><span>01 / To start</span></p>
+                        <h2 class="section-title">What I Love About You</h2>
+                    </div>
+                    <div class="timer-wrap">
+                        <div class="timer" onclick="toggleTimer(0)" id="timer-0">10:00</div>
+                        <div class="timer-status" id="timer-status-0"></div>
+                        <div class="timer-label">tap to pause</div>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <p class="prompt">Each of you: share 2 or 3 things you genuinely appreciated about the other these past few weeks.</p>
+                    <p class="sub-prompt">The small stuff counts. The way you put the dishes away without being asked. How you handled something hard. The look you gave me across the room.</p>
+                </div>
+                <div class="section-footer">
+                    <span class="footer-spacer btn-previous">←</span>
+                    <div class="progress-dots" id="dots-1"><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                    <button class="btn-next" onclick="goToScreen(2)">Next →</button>
+                </div>
+                <div style="text-align:right; margin-top: 1rem;">
+                    <span class="repair-link" onclick="triggerRepairMode()">Repair</span>
+                </div>
+            </div>
+
+            <!-- Section 2: Pulse Check -->
+            <div class="screen screen-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-number"><span>02 / Check in</span></p>
+                        <h2 class="section-title">How Are We, Really?</h2>
+                    </div>
+                    <div class="timer-wrap">
+                        <div class="timer" onclick="toggleTimer(1)" id="timer-1">05:00</div>
+                        <div class="timer-status" id="timer-status-1"></div>
+                        <div class="timer-label">tap to pause</div>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <p class="prompt">How emotionally safe did you feel these past few weeks? What helped or hindered?</p>
+                </div>
+                <div class="section-footer">
+                    <button class="btn-previous" onclick="goToScreen(1)">← Back</button>
+                    <div class="progress-dots" id="dots-2"><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                    <button class="btn-next" onclick="goToScreen(3)">Next →</button>
+                </div>
+                <div style="text-align:right; margin-top: 1rem;">
+                    <span class="repair-link" onclick="triggerRepairMode()">Repair</span>
+                </div>
+            </div>
+
+            <!-- Section 3: Space & Together -->
+            <div class="screen screen-section" id="screen-03">
+                <div class="section-header">
+                    <div>
+                        <p class="section-number"><span>03 / Our rhythm</span></p>
+                        <h2 class="section-title">Space & Together</h2>
+                    </div>
+                    <div class="dual-timer-wrap">
+                        <div class="dual-timer-label">5 min each</div>
+                        <div class="dual-timer-row">
+                            <div class="dual-timer-person">
+                                <div class="timer" onclick="toggleDualTimer(0)" id="dual-timer-0">05:00</div>
+                                <div class="timer-status" id="dual-status-0"></div>
+                                <div class="timer-label" id="dual-name-0">Shant</div>
+                            </div>
+                            <div class="dual-timer-person">
+                                <div class="timer" onclick="toggleDualTimer(1)" id="dual-timer-1" style="opacity:0.35;">05:00</div>
+                                <div class="timer-status" id="dual-status-1"></div>
+                                <div class="timer-label" id="dual-name-1">Aubrey</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <p class="prompt">Did we get a good rhythm of space and intentional reconnection?</p>
+                    <p class="sub-prompt">Aubrey: did you get enough time to yourself to actually recharge?</p>
+                    <p class="sub-prompt">Shant: did you get the heads-down time to feel on top of things?</p>
+                </div>
+                <div class="section-footer">
+                    <button class="btn-previous" onclick="goToScreen(2)">← Back</button>
+                    <div class="progress-dots" id="dots-3"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                    <button class="btn-next" onclick="goToScreen(4)">Next →</button>
+                </div>
+                <div style="text-align:right; margin-top: 1rem;">
+                    <span class="repair-link" onclick="triggerRepairMode()">Repair</span>
+                </div>
+            </div>
+
+            <!-- Section 4: Play -->
+            <div class="screen screen-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-number"><span>04 / The fun stuff</span></p>
+                        <h2 class="section-title">Did We Play?</h2>
+                    </div>
+                    <div class="timer-wrap">
+                        <div class="timer" onclick="toggleTimer(3)" id="timer-3">05:00</div>
+                        <div class="timer-status" id="timer-status-3"></div>
+                        <div class="timer-label">tap to pause</div>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <p class="prompt">Did we have enough play / lightness?</p>
+                    <p class="sub-prompt">Did we do something together that was purely for fun, no agenda, no errands attached?</p>
+                </div>
+                <div class="section-footer">
+                    <button class="btn-previous" onclick="goToScreen(3)">← Back</button>
+                    <div class="progress-dots" id="dots-4"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                    <button class="btn-next" onclick="goToScreen(5)">Next →</button>
+                </div>
+                <div style="text-align:right; margin-top: 1rem;">
+                    <span class="repair-link" onclick="triggerRepairMode()">Repair</span>
+                </div>
+            </div>
+
+            <!-- Section 5: Our Worlds -->
+            <div class="screen screen-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-number"><span>05 / Our worlds</span></p>
+                        <h2 class="section-title">What's Alive for You</h2>
+                    </div>
+                    <div class="timer-wrap">
+                        <div class="timer" onclick="toggleTimer(4)" id="timer-4">05:00</div>
+                        <div class="timer-status" id="timer-status-4"></div>
+                        <div class="timer-label">tap to pause</div>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <p class="prompt">What're you working on? What's taking up a lot of space in your head right now?</p>
+                    <p class="sub-prompt">Any upcoming decisions to figure out together?</p>
+                    <p class="sub-prompt">How can I support you better in the next few weeks?</p>
+                </div>
+                <div class="section-footer">
+                    <button class="btn-previous" onclick="goToScreen(4)">← Back</button>
+                    <div class="progress-dots" id="dots-5"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span><span class="dot"></span></div>
+                    <button class="btn-next" onclick="goToScreen(6)">Next →</button>
+                </div>
+                <div style="text-align:right; margin-top: 1rem;">
+                    <span class="repair-link" onclick="triggerRepairMode()">Repair</span>
+                </div>
+            </div>
+
+            <!-- Section 6: The Big Stuff -->
+            <div class="screen screen-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-number"><span>06 / The big stuff</span></p>
+                        <h2 class="section-title">Where We're Headed</h2>
+                    </div>
+                    <div class="timer-wrap">
+                        <div class="timer" onclick="toggleTimer(5)" id="timer-5">05:00</div>
+                        <div class="timer-status" id="timer-status-5"></div>
+                        <div class="timer-label">tap to pause</div>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <p class="prompt">A gentle pulse on the things that shape our future together.</p>
+                    <p class="sub-prompt"><strong>Career.</strong> How's each chapter feeling? Anything stirring?</p>
+                    <p class="sub-prompt"><strong>Family.</strong> What do we want our life to look like? What feels close?</p>
+                    <p class="sub-prompt"><strong>Home.</strong> Still love it here? Anything we want to change?</p>
+                </div>
+                <div class="section-footer">
+                    <button class="btn-previous" onclick="goToScreen(5)">← Back</button>
+                    <div class="progress-dots" id="dots-6"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot"></span></div>
+                    <button class="btn-next" onclick="goToScreen(7)">Next →</button>
+                </div>
+                <div style="text-align:right; margin-top: 1rem;">
+                    <span class="repair-link" onclick="triggerRepairMode()">Repair</span>
+                </div>
+            </div>
+
+            <!-- Section 7: To Close -->
+            <div class="screen screen-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-number"><span>07 / To close</span></p>
+                        <h2 class="section-title">One Ask, One Truth</h2>
+                    </div>
+                    <div class="timer-wrap">
+                        <div class="timer" onclick="toggleTimer(6)" id="timer-6">05:00</div>
+                        <div class="timer-status" id="timer-status-6"></div>
+                        <div class="timer-label">tap to pause</div>
+                    </div>
+                </div>
+                <div class="section-content">
+                    <p class="prompt">What's one specific need / request from me in the next few weeks?</p>
+                    <p class="sub-prompt">Make it something real I can do. "I need a night that's just ours" or "I need you to check in on how work's going." Something to hold.</p>
+                    <p class="prompt" style="margin-top: 2rem;">Then tell them something true.</p>
+                    <p class="sub-prompt">Something you see in them. Something that makes you proud. Why you're glad it's them.</p>
+                </div>
+                <div class="section-footer">
+                    <button class="btn-previous" onclick="goToScreen(6)">← Back</button>
+                    <div class="progress-dots" id="dots-7"><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span><span class="dot filled"></span></div>
+                    <button class="btn-next" onclick="goToScreen(8)">Next →</button>
+                </div>
+                <div style="text-align:right; margin-top: 1rem;">
+                    <span class="repair-link" onclick="triggerRepairMode()">Repair</span>
+                </div>
+            </div>
+
+            <!-- Closing Screen -->
+            <div class="screen screen-closing" id="closing-screen">
+                <h2 class="closing-title">That's us.</h2>
+                <p class="closing-subtitle">go be together now</p>
+
+                <div class="closing-content">
+                    <p class="suggestion">You showed up for each other. That's the whole thing.</p>
+                    <p class="suggestion">Now go do something small and&nbsp;sweet.</p>
+                    <p class="suggestion">
+                        <span class="emoji">☕</span> Make tea together <span class="emoji">☕</span>
+                    </p>
+                    <p class="suggestion">
+                        <span class="emoji">💑</span> Lay on the couch and do&nbsp;nothing&nbsp;<span class="emoji">💑</span>
+                    </p>
+                    <p class="suggestion">
+                        <span class="emoji">🌳</span> Walk around the block <span class="emoji">🌳</span>
+                    </p>
+                    <p class="closing-final">see you in two months</p>
+                </div>
+
+                <button class="btn-begin" onclick="goToScreen(0)" style="margin-top: 1rem;">Start Over</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repair Mode Overlay -->
+    <div class="repair-overlay" id="repairOverlay">
+        <div class="repair-modal">
+            <h2>It's okay.</h2>
+            <p>Let's come back to this when we're both in a softer place. Tomorrow works. We're not going anywhere.</p>
+            <button class="btn-resume" onclick="exitRepairMode()">We're ready</button>
+        </div>
+    </div>
+
+    <script>
+        let currentScreen = 0;
+        let timers = [];
+        let facilitator = 'Shant';
+        const timerDurations = [10 * 60, 5 * 60, 5 * 60, 5 * 60, 5 * 60, 5 * 60, 5 * 60];
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        let pullStartY = 0;
+
+        function initializeTimers() {
+            timers = timerDurations.map(duration => ({
+                duration: duration,
+                remaining: duration,
+                running: false,
+                intervalId: null
+            }));
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateTimerDisplay(index) {
+            const timerEl = document.getElementById(`timer-${index}`);
+            if (!timerEl) return;
+            const timer = timers[index];
+            timerEl.textContent = formatTime(timer.remaining);
+            const statusEl = document.getElementById(`timer-status-${index}`);
+            if (timer.remaining === 0) {
+                timerEl.classList.add('expired');
+                if (statusEl) { statusEl.textContent = 'take your time'; statusEl.classList.add('visible'); }
+            } else {
+                timerEl.classList.remove('expired');
+                if (statusEl) statusEl.classList.remove('visible');
+            }
+            if (!timer.running) { timerEl.classList.add('paused'); }
+            else { timerEl.classList.remove('paused'); }
+        }
+
+        function tickTimer(index) {
+            const timer = timers[index];
+            if (timer.remaining > 0) { timer.remaining--; updateTimerDisplay(index); }
+        }
+
+        function toggleTimer(index) {
+            const timer = timers[index];
+            if (timer.running) {
+                timer.running = false;
+                clearInterval(timer.intervalId);
+            } else {
+                timer.running = true;
+                timer.intervalId = setInterval(() => tickTimer(index), 1000);
+            }
+            updateTimerDisplay(index);
+        }
+
+        function startTimerForCurrentSection() {
+            if (currentScreen > 0 && currentScreen < 8 && currentScreen !== 3) {
+                const timerIndex = currentScreen - 1;
+                if (!timers[timerIndex].running && timers[timerIndex].remaining > 0) {
+                    timers[timerIndex].running = true;
+                    timers[timerIndex].intervalId = setInterval(() => tickTimer(timerIndex), 1000);
+                    updateTimerDisplay(timerIndex);
+                }
+            }
+        }
+
+        function stopAllTimers() {
+            timers.forEach(timer => {
+                if (timer.intervalId) { clearInterval(timer.intervalId); timer.running = false; }
+            });
+            dualTimers.forEach(t => {
+                if (t.intervalId) { clearInterval(t.intervalId); t.running = false; }
+            });
+        }
+
+        function goToScreen(screenIndex) {
+            stopAllTimers();
+            const main = document.getElementById('main');
+            if (screenIndex === 8) {
+                main.classList.add('scrollable');
+                main.scrollTop = 0;
+                const closingScreen = document.getElementById('closing-screen');
+                setTimeout(() => { closingScreen.classList.add('deepen'); }, 15000);
+            } else {
+                main.classList.remove('scrollable');
+                document.getElementById('closing-screen').classList.remove('deepen');
+            }
+            if (currentScreen === 3) resetDualTimers();
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.screen')[screenIndex].classList.add('active');
+            currentScreen = screenIndex;
+            if (screenIndex === 3) {
+                setTimeout(() => { updateDualNames(); toggleDualTimer(0); }, 100);
+            } else if (screenIndex > 0 && screenIndex < 8) {
+                setTimeout(startTimerForCurrentSection, 100);
+            }
+        }
+
+        let dualTimers = [
+            { remaining: 5 * 60, running: false, intervalId: null },
+            { remaining: 5 * 60, running: false, intervalId: null }
+        ];
+        let activeDual = 0;
+
+        function updateDualDisplay() {
+            for (let i = 0; i < 2; i++) {
+                const el = document.getElementById(`dual-timer-${i}`);
+                const statusEl = document.getElementById(`dual-status-${i}`);
+                el.textContent = formatTime(dualTimers[i].remaining);
+                el.style.opacity = (i === activeDual) ? '1' : '0.35';
+                if (dualTimers[i].remaining === 0) {
+                    el.classList.add('expired');
+                    if (statusEl) { statusEl.textContent = 'take your time'; statusEl.classList.add('visible'); }
+                } else {
+                    el.classList.remove('expired');
+                }
+                if (!dualTimers[i].running) { el.classList.add('paused'); }
+                else {
+                    el.classList.remove('paused');
+                    if (statusEl && dualTimers[i].remaining > 0) statusEl.classList.remove('visible');
+                }
+            }
+        }
+
+        function toggleDualTimer(index) {
+            if (index !== activeDual) {
+                dualTimers[activeDual].running = false;
+                clearInterval(dualTimers[activeDual].intervalId);
+                activeDual = index;
+            }
+            const t = dualTimers[activeDual];
+            if (t.running) {
+                t.running = false;
+                clearInterval(t.intervalId);
+            } else {
+                t.running = true;
+                t.intervalId = setInterval(() => {
+                    if (t.remaining > 0) {
+                        t.remaining--;
+                        updateDualDisplay();
+                    } else {
+                        t.running = false;
+                        clearInterval(t.intervalId);
+                        const other = activeDual === 0 ? 1 : 0;
+                        if (dualTimers[other].remaining === 5 * 60) {
+                            activeDual = other;
+                            dualTimers[other].running = true;
+                            dualTimers[other].intervalId = setInterval(() => {
+                                if (dualTimers[other].remaining > 0) {
+                                    dualTimers[other].remaining--;
+                                    updateDualDisplay();
+                                } else {
+                                    dualTimers[other].running = false;
+                                    clearInterval(dualTimers[other].intervalId);
+                                    updateDualDisplay();
+                                }
+                            }, 1000);
+                        }
+                        updateDualDisplay();
+                    }
+                }, 1000);
+            }
+            updateDualDisplay();
+        }
+
+        function resetDualTimers() {
+            dualTimers.forEach(t => { t.running = false; clearInterval(t.intervalId); t.remaining = 5 * 60; });
+            activeDual = 0;
+            updateDualDisplay();
+        }
+
+        function updateDualNames() {
+            const names = facilitator === 'Aubrey' ? ['Shant', 'Aubrey'] : ['Aubrey', 'Shant'];
+            document.getElementById('dual-name-0').textContent = names[0];
+            document.getElementById('dual-name-1').textContent = names[1];
+        }
+
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                facilitator = this.dataset.facilitator;
+                const title = document.getElementById('landing-title');
+                title.style.opacity = '0.3';
+                setTimeout(() => {
+                    title.textContent = facilitator === 'Aubrey' ? 'Aubrey & Shant' : 'Shant & Aubrey';
+                    title.style.opacity = '1';
+                }, 150);
+                updateDualNames();
+            });
+        });
+
+        function runLandingSequence() {
+            const today = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateStr = today.toLocaleDateString('en-US', options);
+            const dateEl = document.getElementById('landing-date');
+            const btn = document.getElementById('btn-begin');
+            const heart = document.querySelector('.heart-emoji');
+            dateEl.textContent = '';
+            let i = 0;
+            const msPerChar = 2000 / dateStr.length;
+            const typeInterval = setInterval(() => {
+                if (i < dateStr.length) { dateEl.textContent += dateStr[i]; i++; }
+                else {
+                    clearInterval(typeInterval);
+                    if (heart) {
+                        heart.style.transition = 'transform 0.4s ease';
+                        heart.style.transform = 'scale(1.2)';
+                        setTimeout(() => { heart.style.transform = 'scale(1)'; }, 400);
+                    }
+                }
+            }, msPerChar);
+            setTimeout(() => { btn.style.animation = 'fadeInButton 0.8s ease forwards'; }, 3000);
+        }
+
+        function triggerRepairMode() {
+            document.getElementById('repairOverlay').classList.add('active');
+            stopAllTimers();
+        }
+
+        function exitRepairMode() {
+            document.getElementById('repairOverlay').classList.remove('active');
+            startTimerForCurrentSection();
+        }
+
+        function setupTouchHandlers() {
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                pullStartY = e.touches[0].clientY;
+            });
+            document.addEventListener('touchmove', (e) => {
+                if (currentScreen > 0 && currentScreen < 8) {
+                    const section = document.querySelector('.screen.active');
+                    if (section && section.classList.contains('screen-section')) {
+                        const currentY = e.touches[0].clientY;
+                        const diff = currentY - pullStartY;
+                        if (diff > 0 && diff < 100) {
+                            section.style.transform = `translateY(${diff * 0.3}px) scaleY(${1 + diff * 0.0005})`;
+                        }
+                    }
+                }
+            });
+            document.addEventListener('touchend', (e) => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const timeDiff = Date.now() - touchStartTime;
+                const section = document.querySelector('.screen.active');
+                if (section) section.style.transform = '';
+                if (timeDiff < 300) {
+                    const distX = touchStartX - touchEndX;
+                    const distY = Math.abs(touchStartY - touchEndY);
+                    if (Math.abs(distX) > 50 && distY < 30) {
+                        if (distX > 0 && currentScreen < 8) goToScreen(currentScreen + 1);
+                        else if (distX < 0 && currentScreen > 0) goToScreen(currentScreen - 1);
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (currentScreen < 8) {
+                    goToScreen(currentScreen + 1);
+                }
+            }
+            if (e.code === 'ArrowRight' && currentScreen < 8) {
+                e.preventDefault();
+                goToScreen(currentScreen + 1);
+            }
+            if (e.code === 'ArrowLeft' && currentScreen > 0) {
+                e.preventDefault();
+                goToScreen(currentScreen - 1);
+            }
+            if (e.code === 'KeyR' && e.ctrlKey) {
+                e.preventDefault();
+                triggerRepairMode();
+            }
+        });
+
+        initializeTimers();
+        runLandingSequence();
+        updateDualNames();
+        setupTouchHandlers();
+    </script>
+</body>
+  </div>
+
+  <script>
+    function tryUnlock(e) {
+      e.preventDefault();
+      const val = document.getElementById('pw').value.trim().toLowerCase();
+      const err = document.getElementById('gate-error');
+      if (val === 'love') {
+        document.getElementById('gate').style.opacity = '0';
+        document.getElementById('gate').style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+          document.getElementById('gate').style.display = 'none';
+          const app = document.getElementById('app');
+          app.classList.add('unlocked');
+          // Re-run the app init functions now that it's visible
+          if (typeof initializeTimers === 'function') initializeTimers();
+          if (typeof runLandingSequence === 'function') runLandingSequence();
+          if (typeof updateDualNames === 'function') updateDualNames();
+          if (typeof setupTouchHandlers === 'function') setupTouchHandlers();
+        }, 500);
+      } else {
+        err.classList.add('visible');
+        document.getElementById('pw').value = '';
+        document.getElementById('pw').focus();
+        setTimeout(() => err.classList.remove('visible'), 2000);
+      }
+    }
+
+    // Allow Enter key
+    document.getElementById('pw').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { tryUnlock(e); }
+    });
+  </script>
+
+</body>
+</html>
