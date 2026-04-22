@@ -424,9 +424,8 @@
   hero.addEventListener('mousemove',  function(e) { setMouse(e.clientX, e.clientY); });
   hero.addEventListener('mouseleave', clearMouse);
   hero.addEventListener('touchmove',  function(e) {
-    e.preventDefault();
     setMouse(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive: false });
+  }, { passive: true });
   hero.addEventListener('touchstart', function(e) {
     var rect = hero.getBoundingClientRect();
     ripples.push({ x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top, t: 0 });
