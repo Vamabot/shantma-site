@@ -84,7 +84,7 @@
   <main class="page-main">
 
     <!-- Hero -->
-    <section id="hero" style="position:relative; overflow:hidden; min-height: calc(100svh - 56px); display:flex; flex-direction:column; justify-content:flex-end; padding-bottom:5rem; border-top:none;">
+    <section id="hero" style="position:relative; overflow:hidden; min-height: calc(100svh - 56px); display:flex; flex-direction:column; justify-content:flex-end; padding-bottom:5rem; border-top:none; user-select:none; -webkit-user-select:none;">
       <canvas id="hero-canvas" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;display:block;"></canvas>
       <div class="container" style="position:relative;z-index:1;">
         <p class="section-eyebrow fade-in" style="margin-bottom:1.5rem;">People · Product · Strategy · Operations</p>
@@ -222,25 +222,29 @@
 
   /* ── Node weight classes ── */
   var WEIGHTS = [
-    { r: 1.1,  a0: 0.12, a1: 0.50 },
-    { r: 1.75, a0: 0.20, a1: 0.65 },
-    { r: 2.6,  a0: 0.30, a1: 0.80 },
+    { r: 1.1,  a0: 0.11, a1: 0.48 },
+    { r: 1.75, a0: 0.18, a1: 0.62 },
+    { r: 2.6,  a0: 0.28, a1: 0.75 },
   ];
 
-  var W=0, H=0, dpr=1, nodes=[], pulses=[], ripples=[], raf;
+  /* ── Constants ── */
+  var SPRING    = 0.015;   /* spring stiffness — same for home & nucleus pull  */
+  var DAMP      = 0.960;   /* high damping: viscous, no oscillation            */
+  var AMB_AMP   = 5.5;     /* idle ambient oscillation amplitude (px)          */
+  var AMB_T     = 0.00028; /* ambient time scale                               */
+  var REPEL_R   = 72;      /* idle inter-node repulsion radius                 */
+  var REPEL_K   = 0.18;    /* repulsion strength                               */
   var LINK_DIST = 115;
+  var CURSOR_R  = 380;
+  var CURSOR_K  = 0.48;
+
+  var W=0, H=0, dpr=1, nodes=[], pulses=[], ripples=[], raf;
   var mouse  = { x:-9999, y:-9999, on: false };
   var smooth = { x:0, y:0 };
   var nextPulseAt = 0;
 
-  /* ── Nucleus state ── */
-  var nucleus = {
-    x: 0, y: 0,    /* target position */
-    gx: 0, gy: 0,  /* smoothed position */
-    energy: 0,     /* 0..1 */
-    phase: 'idle', /* 'converging' | 'dispersing' | 'idle' */
-    dispersed: false,
-  };
+  /* ── Nucleus ── */
+  var nuc = { x:0, y:0, gx:0, gy:0, energy:0, dispersed:false };
 
   function pickWeight() {
     var r = Math.random();
@@ -248,10 +252,10 @@
   }
 
   function makeNode() {
-    var x = Math.random() * W;
-    var y = Math.random() * H * 0.80;
-    return { wt: pickWeight(), hx: x, hy: y, x: x, y: y, vx: 0, vy: 0,
-             ph: Math.random() * Math.PI * 2, spd: 0.35 + Math.random() * 0.55 };
+    var x = Math.random() * W, y = Math.random() * H * 0.80;
+    return { wt: pickWeight(), hx:x, hy:y, x:x, y:y, vx:0, vy:0,
+             ph: Math.random() * Math.PI * 2,
+             spd: 0.30 + Math.random() * 0.50 };
   }
 
   function randomizeHomes() {
@@ -261,162 +265,160 @@
     }
   }
 
+  /* ── Add energy on click ── */
   function addEnergy(px, py) {
-    var cx = px - nucleus.x, cy = py - nucleus.y;
-    var d  = Math.sqrt(cx*cx + cy*cy);
-    /* if clicking near existing nucleus, nudge it; otherwise reset position */
-    if (nucleus.energy < 0.04 || d > 220) {
-      nucleus.x = px; nucleus.y = py;
-      nucleus.gx = px; nucleus.gy = py;
+    var dx = px - nuc.x, dy = py - nuc.y;
+    var d  = Math.sqrt(dx*dx + dy*dy);
+    if (nuc.energy < 0.04 || d > 240) {
+      /* fresh nucleus */
+      nuc.x = px; nuc.y = py;
+      nuc.gx = px; nuc.gy = py;
     } else {
-      nucleus.x = nucleus.x * 0.65 + px * 0.35;
-      nucleus.y = nucleus.y * 0.65 + py * 0.35;
+      /* nudge nucleus toward new click */
+      nuc.x = nuc.x * 0.70 + px * 0.30;
+      nuc.y = nuc.y * 0.70 + py * 0.30;
     }
-    nucleus.energy = Math.min(1.0, nucleus.energy + 0.22);
-    nucleus.phase  = 'converging';
-    nucleus.dispersed = false;
+    nuc.energy = Math.min(1.0, nuc.energy + 0.18);
+    nuc.dispersed = false;
+    ripples.push({ x: px, y: py, t: 0 });
   }
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = hero.offsetWidth;
-    H = hero.offsetHeight;
-    canvas.width  = W * dpr;
-    canvas.height = H * dpr;
+    W = hero.offsetWidth; H = hero.offsetHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.scale(dpr, dpr);
-    var N = W < 600 ? 34 : 55;
     nodes = [];
+    var N = W < 600 ? 32 : 52;
     for (var i = 0; i < N; i++) nodes.push(makeNode());
     pulses = []; ripples = [];
-    nextPulseAt = Date.now() + 1200;
-    nucleus.energy = 0; nucleus.phase = 'idle'; nucleus.dispersed = false;
+    nextPulseAt = Date.now() + 1400;
+    nuc.energy = 0; nuc.dispersed = false;
   }
 
   /* ── Transaction pulses ── */
   function spawnPulse() {
-    var candidates = [];
+    var cands = [];
     for (var i = 0; i < nodes.length - 1; i++)
       for (var j = i + 1; j < nodes.length; j++) {
         var dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
-        if (dx*dx + dy*dy < LINK_DIST*LINK_DIST) candidates.push([i,j]);
+        if (dx*dx + dy*dy < LINK_DIST*LINK_DIST) cands.push([i,j]);
       }
-    if (!candidates.length) return;
-    var e = candidates[Math.floor(Math.random() * candidates.length)];
+    if (!cands.length) return;
+    var e = cands[Math.floor(Math.random() * cands.length)];
     if (Math.random() < 0.5) e = [e[1], e[0]];
-    pulses.push({ from: e[0], to: e[1], t: 0, spd: 0.010 + Math.random() * 0.008 });
-    nextPulseAt = Date.now() + 1600 + Math.random() * 2400;
+    pulses.push({ from:e[0], to:e[1], t:0, spd: 0.009 + Math.random()*0.007 });
+    nextPulseAt = Date.now() + 1800 + Math.random() * 2600;
   }
 
   function frame() {
     ctx.clearRect(0, 0, W, H);
     var now = Date.now();
-    var t   = now * 0.00036;
+    var t   = now * AMB_T;
 
-    /* ── Cursor smooth ── */
+    /* ── Smooth cursor ── */
     if (mouse.on) {
       if (smooth.x === 0 && smooth.y === 0) { smooth.x = mouse.x; smooth.y = mouse.y; }
       smooth.x += (mouse.x - smooth.x) * 0.048;
       smooth.y += (mouse.y - smooth.y) * 0.048;
     }
 
-    /* ── Nucleus decay ── */
-    if (nucleus.energy > 0) {
-      nucleus.energy *= 0.9985; /* slow entropy — ~25s full drain */
-      if (nucleus.energy < 0.001) nucleus.energy = 0;
+    /* ── Nucleus: slow entropy decay ── */
+    if (nuc.energy > 0) {
+      nuc.energy *= 0.9991;            /* ~120 s to full drain */
+      if (nuc.energy < 0.003) { nuc.energy = 0; }
 
-      /* smooth nucleus position */
-      nucleus.gx += (nucleus.x - nucleus.gx) * 0.04;
-      nucleus.gy += (nucleus.y - nucleus.gy) * 0.04;
+      nuc.gx += (nuc.x - nuc.gx) * 0.05;
+      nuc.gy += (nuc.y - nuc.gy) * 0.05;
 
-      /* transition to dispersing: randomize homes once, let spring carry them out */
-      if (!nucleus.dispersed && nucleus.energy < 0.18) {
-        nucleus.dispersed = true;
-        nucleus.phase = 'dispersing';
+      /* when energy fades below threshold: scatter to new random homes */
+      if (!nuc.dispersed && nuc.energy < 0.12) {
+        nuc.dispersed = true;
         randomizeHomes();
       }
-      if (nucleus.energy === 0) nucleus.phase = 'idle';
     }
 
     /* ── Cursor glow ── */
     if (mouse.on) {
-      var grd = ctx.createRadialGradient(smooth.x, smooth.y, 0, smooth.x, smooth.y, 380);
-      grd.addColorStop(0,   'rgba(' + WARM + ',0.032)');
-      grd.addColorStop(0.5, 'rgba(' + WARM + ',0.010)');
-      grd.addColorStop(1,   'rgba(' + WARM + ',0)');
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, W, H);
+      var cg = ctx.createRadialGradient(smooth.x, smooth.y, 0, smooth.x, smooth.y, 380);
+      cg.addColorStop(0,   'rgba(' + WARM + ',0.028)');
+      cg.addColorStop(0.5, 'rgba(' + WARM + ',0.008)');
+      cg.addColorStop(1,   'rgba(' + WARM + ',0)');
+      ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
     }
 
-    /* ── Nucleus glow — pulses with energy ── */
-    if (nucleus.energy > 0.02) {
-      var pulse = 1 + Math.sin(now * 0.004) * 0.12; /* gentle breath */
-      var nr = 60 + nucleus.energy * 160 * pulse;
-      var ng = ctx.createRadialGradient(nucleus.gx, nucleus.gy, 0, nucleus.gx, nucleus.gy, nr);
-      ng.addColorStop(0,   'rgba(' + SIENNA + ',' + (nucleus.energy * 0.10) + ')');
-      ng.addColorStop(0.4, 'rgba(' + SIENNA + ',' + (nucleus.energy * 0.04) + ')');
+    /* ── Nucleus glow ── */
+    if (nuc.energy > 0.02) {
+      var breathe = 1 + Math.sin(now * 0.0035) * 0.08;
+      var nr = (50 + nuc.energy * 140) * breathe;
+      var ng = ctx.createRadialGradient(nuc.gx, nuc.gy, 0, nuc.gx, nuc.gy, nr);
+      ng.addColorStop(0,   'rgba(' + SIENNA + ',' + (nuc.energy * 0.09) + ')');
+      ng.addColorStop(0.45,'rgba(' + SIENNA + ',' + (nuc.energy * 0.03) + ')');
       ng.addColorStop(1,   'rgba(' + SIENNA + ',0)');
-      ctx.fillStyle = ng;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = ng; ctx.fillRect(0, 0, W, H);
     }
 
     /* ── Physics ── */
-    /* ambient amplitude rises slightly when dispersing (entropy = kinetic energy) */
-    var ambAmp = nucleus.phase === 'dispersing'
-      ? 4 + (1 - nucleus.energy / 0.18) * 3.5
-      : 4;
-
     for (var i = 0; i < nodes.length; i++) {
       var n = nodes[i];
 
-      /* ambient — suppressed near nucleus (approaches stillness), never fully zero elsewhere */
-      var localAmp = ambAmp;
-      if (nucleus.energy > 0.02) {
-        var ncx0 = nucleus.gx - n.x, ncy0 = nucleus.gy - n.y;
-        var nd0  = Math.sqrt(ncx0*ncx0 + ncy0*ncy0);
-        /* full suppression within 18px, linear fade out to 80px */
-        var stillness = nucleus.energy * Math.max(0, 1 - nd0 / 80);
-        localAmp = ambAmp * (1 - stillness);
+      /* KEY: spring target lerps from home → nucleus as energy rises.
+         This means ONE spring force handles both idle return AND nucleus pull.
+         No two forces fighting. Far nodes converge because spring reaches all. */
+      var e = nuc.energy;
+      var tx = n.hx + (nuc.gx - n.hx) * e;
+      var ty = n.hy + (nuc.gy - n.hy) * e;
+
+      /* Ambient oscillation — suppressed near nucleus center.
+         Zone of near-stillness grows with energy (max ~55px radius). */
+      var stillness = 0;
+      if (e > 0.02) {
+        var sdx = nuc.gx - n.x, sdy = nuc.gy - n.y;
+        var sd  = Math.sqrt(sdx*sdx + sdy*sdy);
+        stillness = e * Math.max(0, 1 - sd / (40 + e * 35));
       }
-      var ambX = Math.sin(t * n.spd + n.ph)              * localAmp;
-      var ambY = Math.cos(t * n.spd * 0.68 + n.ph + 1.4) * localAmp;
+      var amp  = AMB_AMP * (1 - stillness);
+      /* Also kill velocity near nucleus so it doesn't wobble */
+      if (stillness > 0.7) { n.vx *= 0.80; n.vy *= 0.80; }
 
-      /* spring to home */
-      var ax = (n.hx + ambX - n.x) * 0.014;
-      var ay = (n.hy + ambY - n.y) * 0.014;
+      var ambX = Math.sin(t * n.spd + n.ph)              * amp;
+      var ambY = Math.cos(t * n.spd * 0.67 + n.ph + 1.4) * amp;
 
-      /* cursor gravity — wide, gentle */
+      /* Spring — single unified force toward lerped target */
+      var ax = (tx + ambX - n.x) * SPRING;
+      var ay = (ty + ambY - n.y) * SPRING;
+
+      /* Idle repulsion — nodes drift apart at rest, giving organic spread.
+         Suppressed during convergence so it doesn't fight the nucleus. */
+      if (e < 0.30) {
+        var rScale = 1 - e / 0.30;
+        for (var j = 0; j < nodes.length; j++) {
+          if (j === i) continue;
+          var rdx = n.x - nodes[j].x, rdy = n.y - nodes[j].y;
+          var rd2 = rdx*rdx + rdy*rdy;
+          if (rd2 < REPEL_R*REPEL_R && rd2 > 0.25) {
+            var rd   = Math.sqrt(rd2);
+            var rf   = REPEL_K * (1 - rd / REPEL_R) * rScale / rd;
+            ax += rdx * rf;
+            ay += rdy * rf;
+          }
+        }
+      }
+
+      /* Cursor gravity */
       if (mouse.on) {
         var mcx = smooth.x - n.x, mcy = smooth.y - n.y;
         var md  = Math.sqrt(mcx*mcx + mcy*mcy);
-        var MR  = 380;
-        if (md < MR && md > 0.5) {
-          var mf = 0.55 * (1 - md / MR);
-          ax += (mcx / md) * mf;
-          ay += (mcy / md) * mf;
+        if (md < CURSOR_R && md > 0.5) {
+          var mf = CURSOR_K * (1 - md / CURSOR_R) / md;
+          ax += mcx * mf; ay += mcy * mf;
         }
       }
 
-      /* nucleus pull — no distance limit; strength scales with energy */
-      if (nucleus.energy > 0.02) {
-        var ncx = nucleus.gx - n.x, ncy = nucleus.gy - n.y;
-        var nd  = Math.sqrt(ncx*ncx + ncy*ncy);
-        if (nd > 0.5) {
-          /* two terms:
-             1. flat base (reaches all nodes equally regardless of distance)
-             2. proximity boost (tightens the cluster once close)            */
-          var ef        = Math.pow(nucleus.energy, 0.5);
-          var proximity = Math.max(0, 1 - nd / 160);
-          var nf = ef * (1.8 + proximity * 3.5);
-          ax += (ncx / nd) * nf;
-          ay += (ncy / nd) * nf;
-        }
-      }
-
-      /* overdamped — viscous, zen */
-      n.vx = (n.vx + ax) * 0.925;
-      n.vy = (n.vy + ay) * 0.925;
-      n.x += n.vx;
-      n.y += n.vy;
+      /* Overdamped integration */
+      n.vx = (n.vx + ax) * DAMP;
+      n.vy = (n.vy + ay) * DAMP;
+      n.x += n.vx; n.y += n.vy;
     }
 
     /* ── Edges ── */
@@ -425,8 +427,8 @@
       for (var j = i + 1; j < nodes.length; j++) {
         var dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
         var d2 = dx*dx + dy*dy;
-        if (d2 < LINK_DIST * LINK_DIST) {
-          var alpha = (1 - Math.sqrt(d2) / LINK_DIST) * 0.085;
+        if (d2 < LINK_DIST*LINK_DIST) {
+          var alpha = (1 - Math.sqrt(d2) / LINK_DIST) * 0.082;
           ctx.strokeStyle = 'rgba(' + AMBER + ',' + alpha + ')';
           ctx.beginPath();
           ctx.moveTo(nodes[i].x, nodes[i].y);
@@ -445,47 +447,42 @@
       var na = nodes[pu.from], nb = nodes[pu.to];
       var px = na.x + (nb.x - na.x) * pu.t;
       var py = na.y + (nb.y - na.y) * pu.t;
-      var env = pu.t < 0.2 ? pu.t / 0.2 : pu.t > 0.8 ? (1 - pu.t) / 0.2 : 1;
+      var env = pu.t < 0.2 ? pu.t/0.2 : pu.t > 0.8 ? (1-pu.t)/0.2 : 1;
       ctx.beginPath();
-      ctx.arc(px, py, 1.6, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(' + SIENNA + ',' + (env * 0.72) + ')';
+      ctx.arc(px, py, 1.5, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(' + SIENNA + ',' + (env * 0.68) + ')';
       ctx.fill();
     }
 
-    /* ── Ripples ── */
+    /* ── Ripples (click confirmation) ── */
     for (var r = ripples.length - 1; r >= 0; r--) {
       var rip = ripples[r];
-      rip.t += 0.016;
+      rip.t += 0.022;
       if (rip.t > 1) { ripples.splice(r, 1); continue; }
-      var ease   = 1 - Math.pow(1 - rip.t, 3);
-      var rAlpha = (1 - rip.t) * 0.32;
+      var ease = 1 - Math.pow(1 - rip.t, 3);
       ctx.beginPath();
-      ctx.arc(rip.x, rip.y, ease * 90, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(' + SIENNA + ',' + rAlpha + ')';
-      ctx.lineWidth = 0.8;
+      ctx.arc(rip.x, rip.y, ease * 80, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(' + SIENNA + ',' + ((1-rip.t) * 0.30) + ')';
+      ctx.lineWidth = 0.7;
       ctx.stroke();
     }
 
     /* ── Nodes ── */
     for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i];
-      var w = WEIGHTS[n.wt];
+      var n = nodes[i], w = WEIGHTS[n.wt];
       var prox = 0;
       if (mouse.on) {
         var mcx = smooth.x - n.x, mcy = smooth.y - n.y;
-        prox = Math.max(0, 1 - Math.sqrt(mcx*mcx + mcy*mcy) / 380);
+        prox = Math.max(0, 1 - Math.sqrt(mcx*mcx + mcy*mcy) / CURSOR_R);
       }
-      /* also boost brightness near nucleus when converging */
-      if (nucleus.energy > 0.02) {
-        var ncx = nucleus.gx - n.x, ncy = nucleus.gy - n.y;
-        var np = Math.max(0, 1 - Math.sqrt(ncx*ncx + ncy*ncy) / 160) * nucleus.energy;
+      if (nuc.energy > 0.02) {
+        var ndx = nuc.gx - n.x, ndy = nuc.gy - n.y;
+        var np  = Math.max(0, 1 - Math.sqrt(ndx*ndx + ndy*ndy) / 120) * nuc.energy;
         prox = Math.max(prox, np);
       }
-      var r = w.r + prox * 1.1;
-      var a = w.a0 + prox * (w.a1 - w.a0);
       ctx.beginPath();
-      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(' + SIENNA + ',' + a + ')';
+      ctx.arc(n.x, n.y, w.r + prox * 0.9, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(' + SIENNA + ',' + (w.a0 + prox*(w.a1-w.a0)) + ')';
       ctx.fill();
     }
 
@@ -494,24 +491,22 @@
 
   /* ── Input ── */
   function setMouse(cx, cy) {
-    var rect = hero.getBoundingClientRect();
-    mouse.x = cx - rect.left; mouse.y = cy - rect.top; mouse.on = true;
-  }
-  function doClick(cx, cy) {
-    var rect = hero.getBoundingClientRect();
-    var px = cx - rect.left, py = cy - rect.top;
-    addEnergy(px, py);
-    ripples.push({ x: px, y: py, t: 0 });
+    var r = hero.getBoundingClientRect();
+    mouse.x = cx - r.left; mouse.y = cy - r.top; mouse.on = true;
   }
 
   hero.addEventListener('mousemove',  function(e) { setMouse(e.clientX, e.clientY); });
   hero.addEventListener('mouseleave', function()  { mouse.on = false; });
-  hero.addEventListener('click',      function(e) { doClick(e.clientX, e.clientY); });
-  hero.addEventListener('touchmove',  function(e) {
+  hero.addEventListener('click',      function(e) {
+    var r = hero.getBoundingClientRect();
+    addEnergy(e.clientX - r.left, e.clientY - r.top);
+  });
+  hero.addEventListener('touchmove', function(e) {
     setMouse(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
   hero.addEventListener('touchstart', function(e) {
-    doClick(e.touches[0].clientX, e.touches[0].clientY);
+    var r = hero.getBoundingClientRect();
+    addEnergy(e.touches[0].clientX - r.left, e.touches[0].clientY - r.top);
     setMouse(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: true });
   hero.addEventListener('touchend', function() { mouse.on = false; });
