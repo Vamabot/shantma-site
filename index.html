@@ -228,12 +228,12 @@
   ];
 
   /* ── Constants ── */
-  var SPRING    = 0.015;   /* spring stiffness — same for home & nucleus pull  */
-  var DAMP      = 0.960;   /* high damping: viscous, no oscillation            */
+  var SPRING    = 0.004;   /* spring stiffness — same for home & nucleus pull  */
+  var DAMP      = 0.987;   /* high damping: viscous, no oscillation            */
   var AMB_AMP   = 5.5;     /* idle ambient oscillation amplitude (px)          */
   var AMB_T     = 0.00028; /* ambient time scale                               */
   var REPEL_R   = 72;      /* idle inter-node repulsion radius                 */
-  var REPEL_K   = 0.18;    /* repulsion strength                               */
+  var REPEL_K   = 0.06;    /* repulsion strength                               */
   var LINK_DIST = 115;
   var CURSOR_R  = 380;
   var CURSOR_K  = 0.48;
@@ -384,7 +384,7 @@
       }
       var amp  = AMB_AMP * (1 - stillness);
       /* Also kill velocity near nucleus so it doesn't wobble */
-      if (stillness > 0.7) { n.vx *= 0.80; n.vy *= 0.80; }
+
 
       var ambX = Math.sin(t * n.spd + n.ph)              * amp;
       var ambY = Math.cos(t * n.spd * 0.67 + n.ph + 1.4) * amp;
