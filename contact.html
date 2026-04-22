@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact — Shant Marootian</title>
+  <meta name="description" content="Get in touch with Shant Marootian.">
+  <meta property="og:title" content="Contact — Shant Marootian">
+  <link rel="icon" href="https://global.divhunt.com/bd569f7ccdaddeaed0e0111d5e181d35_22491.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page-wrap">
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-name">Shant Marootian</a>
+      <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+          <rect width="16" height="1.5" rx="1"/><rect y="5.25" width="16" height="1.5" rx="1"/><rect y="10.5" width="16" height="1.5" rx="1"/>
+        </svg>
+      </button>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="startup-guide.html">Startup Guide</a>
+        <a href="contact.html" class="active">Contact</a>
+        <div class="nav-social">
+          <a href="https://www.linkedin.com/in/shantma" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="https://twitter.com/smaroo" target="_blank" rel="noopener">X</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page-main">
+
+    <section style="padding-top:5rem; border-top:none;">
+      <div class="container">
+        <span class="section-eyebrow fade-in">Contact</span>
+        <h1 class="section-title fade-in" style="margin-bottom:0.75rem;">Want to ask me something?</h1>
+        <p class="fade-in" style="font-size:0.9rem; color:var(--text-mid); margin-bottom:3.5rem;">If you reach out, I do my best to reply ASAP.</p>
+
+        <form class="fade-in" id="contact-form" style="max-width:520px; display:flex; flex-direction:column; gap:1.2rem;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.2rem;" class="form-row">
+            <div>
+              <label for="name" style="display:block; font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem;">Name *</label>
+              <input type="text" id="name" name="name" required placeholder="Your name"
+                style="width:100%; background:var(--surface); border:1px solid var(--border-mid); color:var(--text); font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:300; padding:0.8rem 1rem; border-radius:3px; outline:none; transition:border-color 0.2s;"
+                onfocus="this.style.borderColor='var(--sienna)'" onblur="this.style.borderColor='var(--border-mid)'">
+            </div>
+            <div>
+              <label for="email" style="display:block; font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem;">Email *</label>
+              <input type="email" id="email" name="email" required placeholder="you@example.com"
+                style="width:100%; background:var(--surface); border:1px solid var(--border-mid); color:var(--text); font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:300; padding:0.8rem 1rem; border-radius:3px; outline:none; transition:border-color 0.2s;"
+                onfocus="this.style.borderColor='var(--sienna)'" onblur="this.style.borderColor='var(--border-mid)'">
+            </div>
+          </div>
+
+          <div>
+            <label for="telegram" style="display:block; font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem;">Telegram Handle</label>
+            <input type="text" id="telegram" name="telegram" placeholder="@handle"
+              style="width:100%; background:var(--surface); border:1px solid var(--border-mid); color:var(--text); font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:300; padding:0.8rem 1rem; border-radius:3px; outline:none; transition:border-color 0.2s;"
+              onfocus="this.style.borderColor='var(--sienna)'" onblur="this.style.borderColor='var(--border-mid)'">
+          </div>
+
+          <div>
+            <label for="message" style="display:block; font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem;">Message *</label>
+            <textarea id="message" name="message" required placeholder="What's on your mind?" rows="5"
+              style="width:100%; background:var(--surface); border:1px solid var(--border-mid); color:var(--text); font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:300; padding:0.8rem 1rem; border-radius:3px; outline:none; transition:border-color 0.2s; resize:vertical; line-height:1.6;"
+              onfocus="this.style.borderColor='var(--sienna)'" onblur="this.style.borderColor='var(--border-mid)'"></textarea>
+          </div>
+
+          <div>
+            <button type="submit" class="btn btn-primary">Send message</button>
+            <p id="form-status" style="font-size:0.8rem; color:var(--text-dim); margin-top:0.75rem; display:none;"></p>
+          </div>
+        </form>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <strong>Shant Marootian</strong>
+          Charlotte, NC · shantma.com
+        </div>
+        <div class="footer-social">
+          <a href="https://www.linkedin.com/in/shantma" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="https://twitter.com/smaroo" target="_blank" rel="noopener">X</a>
+          <a href="https://www.instagram.com/shantmacom/" target="_blank" rel="noopener">Instagram</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+  document.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => {
+    document.querySelector('.nav-links').classList.remove('open');
+  }));
+
+  // Form submission (Divhunt form ID 169)
+  document.getElementById('contact-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const status = document.getElementById('form-status');
+    const btn = this.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    const data = {
+      name: this.name.value,
+      email: this.email.value,
+      telegram: this.telegram.value,
+      message: this.message.value
+    };
+
+    try {
+      const res = await fetch('https://shantma.com/api/form/169', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      status.style.display = 'block';
+      if (res.ok) {
+        status.textContent = 'Message sent. I\'ll be in touch.';
+        status.style.color = 'var(--amber)';
+        this.reset();
+      } else {
+        throw new Error();
+      }
+    } catch {
+      status.style.display = 'block';
+      status.textContent = 'Something went wrong. Try emailing directly at contact@shantma.com.';
+      status.style.color = 'var(--text-dim)';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send message';
+  });
+</script>
+
+<style>
+  input::placeholder, textarea::placeholder { color: var(--text-dim); }
+  @media (max-width: 540px) {
+    .form-row { grid-template-columns: 1fr !important; }
+  }
+</style>
+
+</body>
+</html>

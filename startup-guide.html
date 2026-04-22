@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Startup Guide — Shant Marootian</title>
+  <meta name="description" content="An Operator's 8-Part Guide to Setting a Startup's Foundations.">
+  <meta property="og:title" content="Startup Guide — Shant Marootian">
+  <link rel="icon" href="https://global.divhunt.com/bd569f7ccdaddeaed0e0111d5e181d35_22491.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page-wrap">
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-name">Shant Marootian</a>
+      <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+          <rect width="16" height="1.5" rx="1"/><rect y="5.25" width="16" height="1.5" rx="1"/><rect y="10.5" width="16" height="1.5" rx="1"/>
+        </svg>
+      </button>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="startup-guide.html" class="active">Startup Guide</a>
+        <a href="contact.html">Contact</a>
+        <div class="nav-social">
+          <a href="https://www.linkedin.com/in/shantma" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="https://twitter.com/smaroo" target="_blank" rel="noopener">X</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page-main">
+
+    <section style="padding-top:5rem; border-top:none;">
+      <div class="container">
+        <span class="section-eyebrow fade-in">Startup Guide</span>
+        <h1 class="section-title fade-in" style="max-width:620px; margin-bottom:1.5rem;">An Operator's 8-Part Guide to Setting a Startup's Foundations</h1>
+        <p class="fade-in" style="font-size:0.95rem; color:var(--text-mid); max-width:580px; line-height:1.8; margin-bottom:3rem;">I systematically recorded knowledge over time to help resurface ideas and connect the dots. I built this guide because memory has its limits. If you choose to read on, I hope you find something valuable.</p>
+        <div class="fade-in">
+          <a href="https://shantma.notion.site/An-Operator-s-8-Part-Guide-to-Setting-a-Startup-s-Foundations-4336f2bff21b4a36b967d221e61640ff?pvs=4" target="_blank" rel="noopener" class="btn btn-primary">Access the Guide →</a>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="fade-in" style="width:100%; border:1px solid var(--border-mid); border-radius:6px; overflow:hidden; background:var(--surface);">
+          <iframe
+            src="https://shantma.notion.site/ebd/4336f2bff21b4a36b967d221e61640ff"
+            width="100%"
+            height="700"
+            frameborder="0"
+            allowfullscreen
+            style="display:block;"
+          ></iframe>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <strong>Shant Marootian</strong>
+          Charlotte, NC · shantma.com
+        </div>
+        <div class="footer-social">
+          <a href="https://www.linkedin.com/in/shantma" target="_blank" rel="noopener">LinkedIn</a>
+          <a href="https://twitter.com/smaroo" target="_blank" rel="noopener">X</a>
+          <a href="https://www.instagram.com/shantmacom/" target="_blank" rel="noopener">Instagram</a>
+          <a href="contact.html">Contact</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+<script>
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+  document.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => {
+    document.querySelector('.nav-links').classList.remove('open');
+  }));
+</script>
+</body>
+</html>
