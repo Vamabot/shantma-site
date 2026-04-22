@@ -91,6 +91,7 @@ nav {
   gap: 0.25rem;
 }
 
+/* ── Nav link hover: underline slide-in, no background glow ── */
 .nav-links a {
   font-size: 0.75rem;
   letter-spacing: 0.07em;
@@ -98,30 +99,37 @@ nav {
   color: var(--text-mid);
   text-decoration: none;
   padding: 0.35rem 0.75rem;
-  border-radius: 3px;
-  transition: color 0.2s, background 0.2s;
+  border-radius: 0;
+  transition: color 0.2s;
   white-space: nowrap;
+  position: relative;
 }
-.nav-links a:hover { color: var(--text); background: rgba(176,90,40,0.1); }
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 1px;
+  background: var(--sienna);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.22s ease;
+}
+.nav-links a:hover { color: var(--text); background: none; }
+.nav-links a:hover::after { transform: scaleX(1); }
 .nav-links a.active { color: var(--sienna); }
+.nav-links a.active::after { transform: scaleX(1); }
 
 .nav-social {
   display: flex;
-  gap: 0.25rem;
+  gap: 0;
   margin-left: 0.5rem;
   padding-left: 1rem;
   border-left: 1px solid var(--border-mid);
+  align-items: center;
 }
-.nav-social a {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  text-decoration: none;
-  padding: 0.35rem 0.6rem;
-  transition: color 0.2s;
-}
-.nav-social a:hover { color: var(--sienna); }
+/* .nav-social a styles are in the new block above */
 
 /* Hamburger */
 .nav-toggle {
@@ -161,6 +169,106 @@ section + section { border-top: 1px solid var(--border); }
   letter-spacing: -0.02em;
   margin-bottom: 1rem;
 }
+
+/* ── Hero headline — no hanging words ── */
+.hero-headline {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.8rem, 6.5vw, 5rem);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  max-width: 780px;
+  margin-bottom: 2.5rem;
+  text-wrap: balance;
+  /* fallback for older browsers */
+  word-break: break-word;
+}
+
+/* ── Career block classes ── */
+.career-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 0.5rem;
+  font-weight: 400;
+}
+
+.career-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.9rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.career-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.career-list li {
+  font-size: 0.82rem;
+  color: var(--text-mid);
+  padding-left: 1rem;
+  position: relative;
+  line-height: 1.5;
+}
+
+.career-list li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--sienna-dim);
+}
+
+/* ── Hero social icons ── */
+.hero-link {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.hero-link:hover { color: var(--sienna); }
+
+.hero-social-icon {
+  color: var(--text-dim);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+.hero-social-icon:hover { color: var(--sienna); }
+
+/* ── Nav social icons ── */
+.nav-social a {
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  transition: color 0.2s;
+}
+.nav-social a:hover { color: var(--sienna); }
+
+/* ── Footer social icons ── */
+.footer-social a {
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+  text-decoration: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.footer-social a:hover { color: var(--sienna); }
 
 /* ── Rule ── */
 .rule {
@@ -243,18 +351,10 @@ footer {
 }
 .footer-social {
   display: flex;
-  gap: 1.2rem;
+  gap: 1rem;
   align-items: center;
 }
-.footer-social a {
-  font-size: 0.7rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-.footer-social a:hover { color: var(--sienna); }
+/* .footer-social a styles defined in new utility block */
 
 /* ── Fade-in ── */
 .fade-in {
@@ -283,6 +383,7 @@ footer {
   }
   .nav-links.open { display: flex; }
   .nav-links a { padding: 0.6rem 0.5rem; width: 100%; }
+  .nav-links a::after { left: 0.5rem; right: 0.5rem; }
   .nav-social {
     flex-direction: row;
     border-left: none;
@@ -294,4 +395,12 @@ footer {
     width: 100%;
   }
   .nav-toggle { display: flex; }
+
+  /* Career grid: 1 col on mobile */
+  .career-grid { grid-template-columns: 1fr !important; gap: 2.5rem !important; }
+}
+
+@media (min-width: 761px) and (max-width: 1024px) {
+  /* Career grid: 2 col on tablet */
+  .career-grid { grid-template-columns: 1fr 1fr !important; }
 }
