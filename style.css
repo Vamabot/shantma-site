@@ -20,7 +20,7 @@
   --text-dim:  rgba(28, 15, 8, 0.35);
 }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scrollbar-gutter: stable; }
 
 body {
   font-family: 'Inter', sans-serif;
@@ -48,7 +48,7 @@ body::before {
 
 /* ── Container ── */
 .container {
-  max-width: 1060px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 0 2rem;
 }
@@ -64,7 +64,7 @@ nav {
 }
 
 .nav-inner {
-  max-width: 1060px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 0 2rem;
   height: 56px;
