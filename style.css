@@ -3,6 +3,16 @@
    Deep Autumn palette
    ======================================== */
 
+/* ── Site border frame ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  z-index: 9999;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {

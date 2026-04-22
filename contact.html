@@ -3,9 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contact | Shant Marootian</title>
-  <meta name="description" content="Get in touch with Shant Marootian.">
-  <meta property="og:title" content="Contact | Shant Marootian">
+    <title>Contact Shant Marootian</title>
+  <meta name="author" content="Shant Marootian">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="Contact Shant Marootian">
+  <meta property="og:description" content="Get in touch with Shant Marootian — operator, builder, and investor based in Charlotte, NC.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://shantma.com/contact.html">
+  <meta property="og:image" content="https://shantma.com/og-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Shant Marootian">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@smaroo">
+  <meta name="twitter:creator" content="@smaroo">
+  <meta name="twitter:title" content="Contact Shant Marootian">
+  <meta name="twitter:description" content="Get in touch with Shant Marootian — operator, builder, and investor based in Charlotte, NC.">
+  <meta name="twitter:image" content="https://shantma.com/og-preview.png">
+  <link rel="canonical" href="https://shantma.com/contact.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Shant Marootian",
+    "url": "https://shantma.com",
+    "image": "https://shantma.com/headshot.jpg",
+    "sameAs": [
+      "https://twitter.com/smaroo",
+      "https://www.linkedin.com/in/shantma",
+      "https://www.instagram.com/shantmacom/"
+    ],
+    "jobTitle": "Startup Operator & COO",
+    "description": "Startup operator and COO at Tessera and DELV. Former Deloitte consultant. Long-term internet-native investor and builder in crypto, AI, and capital.",
+    "address": {"@type": "PostalAddress", "addressLocality": "Charlotte", "addressRegion": "NC", "addressCountry": "US"},
+    "alumniOf": [
+      {"@type": "Organization", "name": "Deloitte Consulting"},
+      {"@type": "Organization", "name": "Tessera"},
+      {"@type": "Organization", "name": "DELV (fmr. Element Finance)"},
+      {"@type": "Organization", "name": "Villanova University"}
+    ],
+    "knowsAbout": ["DeFi", "Crypto", "Startups", "Product Strategy", "Operations", "Venture Capital", "AI"]
+  }
+  </script>
   <link rel="icon" href="https://global.divhunt.com/bd569f7ccdaddeaed0e0111d5e181d35_22491.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -124,7 +163,7 @@
     document.querySelector('.nav-links').classList.remove('open');
   }));
 
-  // Form submission (Divhunt form ID 169)
+  // Form submission — Web3Forms
   document.getElementById('contact-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const status = document.getElementById('form-status');
@@ -132,22 +171,23 @@
     btn.disabled = true;
     btn.textContent = 'Sending...';
 
-    const data = {
-      name: this.name.value,
-      email: this.email.value,
-      telegram: this.telegram.value,
-      message: this.message.value
-    };
+    const data = new FormData();
+    data.append('access_key', '2b26896d-da88-4d50-b44a-d6ee296df709');
+    data.append('name', this.name.value);
+    data.append('email', this.email.value);
+    data.append('telegram', this.telegram.value);
+    data.append('message', this.message.value);
+    data.append('subject', 'New message from shantma.com');
 
     try {
-      const res = await fetch('https://shantma.com/api/form/169', {
+      const res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: data
       });
+      const json = await res.json();
 
       status.style.display = 'block';
-      if (res.ok) {
+      if (json.success) {
         status.textContent = 'Message sent. I\'ll be in touch.';
         status.style.color = 'var(--amber)';
         this.reset();
