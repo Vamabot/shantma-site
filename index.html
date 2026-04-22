@@ -368,9 +368,17 @@
     for (var i = 0; i < nodes.length; i++) {
       var n = nodes[i];
 
-      /* ambient — no perfect stillness */
-      var ambX = Math.sin(t * n.spd + n.ph)              * ambAmp;
-      var ambY = Math.cos(t * n.spd * 0.68 + n.ph + 1.4) * ambAmp;
+      /* ambient — suppressed near nucleus (approaches stillness), never fully zero elsewhere */
+      var localAmp = ambAmp;
+      if (nucleus.energy > 0.02) {
+        var ncx0 = nucleus.gx - n.x, ncy0 = nucleus.gy - n.y;
+        var nd0  = Math.sqrt(ncx0*ncx0 + ncy0*ncy0);
+        /* full suppression within 18px, linear fade out to 80px */
+        var stillness = nucleus.energy * Math.max(0, 1 - nd0 / 80);
+        localAmp = ambAmp * (1 - stillness);
+      }
+      var ambX = Math.sin(t * n.spd + n.ph)              * localAmp;
+      var ambY = Math.cos(t * n.spd * 0.68 + n.ph + 1.4) * localAmp;
 
       /* spring to home */
       var ax = (n.hx + ambX - n.x) * 0.014;
@@ -388,16 +396,17 @@
         }
       }
 
-      /* nucleus pull — scales with energy, reaches entire canvas */
+      /* nucleus pull — no distance limit; strength scales with energy */
       if (nucleus.energy > 0.02) {
         var ncx = nucleus.gx - n.x, ncy = nucleus.gy - n.y;
         var nd  = Math.sqrt(ncx*ncx + ncy*ncy);
         if (nd > 0.5) {
-          /* force = energy^0.6 * (base + proximity boost)
-             — strong pull from far away, converges to a tight cluster */
-          var ef = Math.pow(nucleus.energy, 0.6);
-          var proximity = Math.max(0, 1 - nd / Math.max(W, H));
-          var nf = ef * (0.55 + proximity * 1.2);
+          /* two terms:
+             1. flat base (reaches all nodes equally regardless of distance)
+             2. proximity boost (tightens the cluster once close)            */
+          var ef        = Math.pow(nucleus.energy, 0.5);
+          var proximity = Math.max(0, 1 - nd / 160);
+          var nf = ef * (1.8 + proximity * 3.5);
           ax += (ncx / nd) * nf;
           ay += (ncy / nd) * nf;
         }
