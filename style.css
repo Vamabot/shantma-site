@@ -403,6 +403,6 @@ footer {
 }
 
 @media (min-width: 761px) and (max-width: 1024px) {
-  /* Career grid: 2 col on tablet */
-  .career-grid { grid-template-columns: 1fr 1fr !important; }
+  /* Career grid: 2-3 col on tablet */
+  .career-grid { grid-template-columns: repeat(3, 1fr) !important; }
 }
