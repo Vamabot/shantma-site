@@ -220,30 +220,33 @@
   var WARM   = '176,90,40';
 
   var WEIGHTS = [
-    { r: 1.1,  a0: 0.11, a1: 0.48 },
-    { r: 1.75, a0: 0.18, a1: 0.62 },
-    { r: 2.6,  a0: 0.28, a1: 0.75 },
+    { r: 1.1,  a0: 0.11, a1: 0.45 },
+    { r: 1.75, a0: 0.18, a1: 0.58 },
+    { r: 2.6,  a0: 0.28, a1: 0.70 },
   ];
 
-  /* ── Physics constants ── */
-  var SPRING    = 0.0018;  /* home reversion — 1/8 feel of impulse, very gradual */
-  var DAMP      = 0.994;   /* teflon: near-zero friction, momentum carries far   */
-  var IMPULSE   = 7.5;     /* click velocity kick strength                        */
-  var AMB_AMP   = 4.5;
-  var AMB_T     = 0.00028;
-  var REPEL_R   = 68;
-  var REPEL_K   = 0.055;
+  /* ── Bedsheet physics ──────────────────────────────────────────
+     Nodes sit on a fabric. Each has its own slow lazy drift.
+     A gravity well forms at the click point — deeper with each
+     click, shallower as sand decays. No springs, no impulses.
+     Damping = medium: nodes move through fabric, not through space.
+  ────────────────────────────────────────────────────────────── */
+  var DAMP      = 0.975;   /* fabric medium — not frictionless, not sticky   */
+  var GRAVITY_K = 0.22;    /* well pull strength at unit distance             */
+  var SOFTEN    = 55;      /* softening radius — prevents singularity at core */
+  var SAND      = 0.055;   /* energy added per click — gentle, small          */
+  var DECAY     = 0.9993;  /* ~200 frames to half-life — sand slowly floats away */
+  var DRIFT_K   = 0.0018;  /* each node's own lazy random-walk force          */
+  var DRIFT_LAG = 0.008;   /* how slowly drift direction changes               */
   var LINK_DIST = 115;
-  var CURSOR_R  = 380;
-  var CURSOR_K  = 0.38;
+  var CURSOR_R  = 340;
+  var CURSOR_K  = 0.28;    /* cursor is a very gentle suggestion, not a pull  */
 
   var W=0, H=0, dpr=1, nodes=[], pulses=[], ripples=[], raf;
   var mouse  = { x:-9999, y:-9999, on:false };
   var smooth = { x:0, y:0 };
   var nextPulseAt = 0;
-
-  /* nucleus: only used for glow + stillness zone — pull is now impulse-based */
-  var nuc = { x:0, y:0, gx:0, gy:0, energy:0, dispersed:false };
+  var nuc = { x:0, y:0, gx:0, gy:0, energy:0 };
 
   function pickWeight() {
     var r = Math.random();
@@ -251,47 +254,32 @@
   }
 
   function makeNode() {
-    var x = Math.random() * W, y = Math.random() * H * 0.80;
-    return { wt:pickWeight(), hx:x, hy:y, x:x, y:y, vx:0, vy:0,
-             ph: Math.random()*Math.PI*2, spd: 0.30+Math.random()*0.50 };
+    var x = Math.random()*W, y = Math.random()*H*0.80;
+    /* each node has a slow personal drift target that wanders independently */
+    return {
+      wt: pickWeight(),
+      x: x, y: y, vx: 0, vy: 0,
+      /* drift: a slowly-changing desired velocity direction */
+      dax: (Math.random()-0.5)*0.4,
+      day: (Math.random()-0.5)*0.4,
+      /* edge buffering — keeps nodes from leaving the canvas */
+      ph:  Math.random()*Math.PI*2,
+    };
   }
 
-  function randomizeHomes() {
-    for (var i = 0; i < nodes.length; i++) {
-      nodes[i].hx = Math.random() * W;
-      nodes[i].hy = Math.random() * H * 0.80;
-    }
-  }
-
-  /* ── Click: sharp velocity impulse, distance-gated so close nodes lead ── */
-  function fireImpulse(px, py) {
-    var dx = px - nuc.x, dy = py - nuc.y, d = Math.sqrt(dx*dx+dy*dy);
-    if (nuc.energy < 0.04 || d > 240) {
+  function addSand(px, py) {
+    var dx = px-nuc.x, dy = py-nuc.y;
+    var d  = Math.sqrt(dx*dx+dy*dy);
+    /* reposition nucleus toward new click if far away or cold */
+    if (nuc.energy < 0.05 || d > 260) {
       nuc.x = px; nuc.y = py; nuc.gx = px; nuc.gy = py;
     } else {
-      nuc.x = nuc.x*0.72 + px*0.28;
-      nuc.y = nuc.y*0.72 + py*0.28;
+      /* nudge nucleus slightly toward new click location */
+      nuc.x = nuc.x*0.80 + px*0.20;
+      nuc.y = nuc.y*0.80 + py*0.20;
     }
-    nuc.energy    = Math.min(1.0, nuc.energy + 0.09);
-    nuc.dispersed = false;
-
-    /* fire impulse at every node — reach expands with cumulative energy */
-    var maxD  = Math.sqrt(W*W + H*H);
-    var reach = 100 + nuc.energy * (maxD - 100);
-    for (var i = 0; i < nodes.length; i++) {
-      var n   = nodes[i];
-      var ndx = nuc.gx - n.x, ndy = nuc.gy - n.y;
-      var nd  = Math.sqrt(ndx*ndx + ndy*ndy);
-      if (nd < reach && nd > 0.5) {
-        /* linear falloff: close = full kick, edge of reach = near zero */
-        var falloff = 1 - nd / reach;
-        var mag     = IMPULSE * falloff;
-        n.vx += (ndx/nd) * mag;
-        n.vy += (ndy/nd) * mag;
-      }
-    }
-
-    ripples.push({ x:px, y:py, t:0 });
+    nuc.energy = Math.min(1.0, nuc.energy + SAND);
+    ripples.push({ x: nuc.x, y: nuc.y, t: 0 });
   }
 
   function resize() {
@@ -303,112 +291,108 @@
     var N = W < 600 ? 32 : 52;
     for (var i = 0; i < N; i++) nodes.push(makeNode());
     pulses=[]; ripples=[];
-    nextPulseAt = Date.now()+1400;
-    nuc.energy=0; nuc.dispersed=false;
+    nextPulseAt = Date.now()+1600;
+    nuc.energy=0;
   }
 
   function spawnPulse() {
     var cands=[];
-    for (var i = 0; i < nodes.length-1; i++)
-      for (var j = i+1; j < nodes.length; j++) {
+    for (var i=0; i<nodes.length-1; i++)
+      for (var j=i+1; j<nodes.length; j++) {
         var dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y;
         if (dx*dx+dy*dy < LINK_DIST*LINK_DIST) cands.push([i,j]);
       }
     if (!cands.length) return;
     var e = cands[Math.floor(Math.random()*cands.length)];
     if (Math.random()<0.5) e=[e[1],e[0]];
-    pulses.push({ from:e[0], to:e[1], t:0, spd:0.009+Math.random()*0.007 });
-    nextPulseAt = Date.now()+1800+Math.random()*2600;
+    pulses.push({ from:e[0], to:e[1], t:0, spd:0.008+Math.random()*0.006 });
+    nextPulseAt = Date.now()+2000+Math.random()*3000;
   }
 
   function frame() {
     ctx.clearRect(0,0,W,H);
     var now = Date.now();
-    var t   = now * AMB_T;
 
-    /* smooth cursor — snappier than before (teflon feel on cursor too) */
+    /* smooth cursor */
     if (mouse.on) {
       if (smooth.x===0&&smooth.y===0) { smooth.x=mouse.x; smooth.y=mouse.y; }
-      smooth.x += (mouse.x-smooth.x)*0.10;
-      smooth.y += (mouse.y-smooth.y)*0.10;
+      smooth.x += (mouse.x-smooth.x)*0.07;
+      smooth.y += (mouse.y-smooth.y)*0.07;
     }
 
-    /* nucleus decay */
+    /* sand decays — nucleus energy slowly drains */
     if (nuc.energy > 0) {
-      nuc.energy *= 0.9991;
-      if (nuc.energy < 0.003) nuc.energy = 0;
-      nuc.gx += (nuc.x-nuc.gx)*0.05;
-      nuc.gy += (nuc.y-nuc.gy)*0.05;
-      if (!nuc.dispersed && nuc.energy < 0.12) {
-        nuc.dispersed = true;
-        randomizeHomes();
-      }
+      nuc.energy *= DECAY;
+      if (nuc.energy < 0.004) nuc.energy = 0;
+      nuc.gx += (nuc.x-nuc.gx)*0.04;
+      nuc.gy += (nuc.y-nuc.gy)*0.04;
     }
 
-    /* cursor glow */
+    /* cursor glow — very soft */
     if (mouse.on) {
-      var cg = ctx.createRadialGradient(smooth.x,smooth.y,0,smooth.x,smooth.y,360);
-      cg.addColorStop(0,   'rgba('+WARM+',0.026)');
-      cg.addColorStop(0.5, 'rgba('+WARM+',0.007)');
-      cg.addColorStop(1,   'rgba('+WARM+',0)');
+      var cg = ctx.createRadialGradient(smooth.x,smooth.y,0,smooth.x,smooth.y,300);
+      cg.addColorStop(0,  'rgba('+WARM+',0.022)');
+      cg.addColorStop(0.6,'rgba('+WARM+',0.006)');
+      cg.addColorStop(1,  'rgba('+WARM+',0)');
       ctx.fillStyle=cg; ctx.fillRect(0,0,W,H);
     }
 
-    /* nucleus glow */
+    /* nucleus glow — breathes very slowly with energy */
     if (nuc.energy > 0.02) {
-      var breathe = 1 + Math.sin(now*0.0035)*0.07;
-      var nr = (45 + nuc.energy*130)*breathe;
+      var breathe = 1 + Math.sin(now*0.0022)*0.06;
+      var nr = (40 + nuc.energy*120)*breathe;
       var ng = ctx.createRadialGradient(nuc.gx,nuc.gy,0,nuc.gx,nuc.gy,nr);
-      ng.addColorStop(0,   'rgba('+SIENNA+','+(nuc.energy*0.09)+')');
-      ng.addColorStop(0.45,'rgba('+SIENNA+','+(nuc.energy*0.03)+')');
-      ng.addColorStop(1,   'rgba('+SIENNA+',0)');
+      ng.addColorStop(0,    'rgba('+SIENNA+','+(nuc.energy*0.08)+')');
+      ng.addColorStop(0.45, 'rgba('+SIENNA+','+(nuc.energy*0.025)+')');
+      ng.addColorStop(1,    'rgba('+SIENNA+',0)');
       ctx.fillStyle=ng; ctx.fillRect(0,0,W,H);
     }
 
     /* ── Physics ── */
-    for (var i = 0; i < nodes.length; i++) {
+    for (var i=0; i<nodes.length; i++) {
       var n = nodes[i];
+      var ax = 0, ay = 0;
 
-      /* ambient oscillation — suppressed near nucleus */
-      var stillness = 0;
-      if (nuc.energy > 0.02) {
-        var sdx=nuc.gx-n.x, sdy=nuc.gy-n.y;
-        stillness = nuc.energy * Math.max(0, 1-Math.sqrt(sdx*sdx+sdy*sdy)/(40+nuc.energy*35));
+      /* each node's own lazy drift — direction slowly wanders */
+      n.dax += (Math.random()-0.5)*0.04;
+      n.day += (Math.random()-0.5)*0.04;
+      /* clamp drift magnitude so it stays lazy */
+      var dm = Math.sqrt(n.dax*n.dax+n.day*n.day);
+      if (dm > 0.5) { n.dax*=0.5/dm; n.day*=0.5/dm; }
+      ax += n.dax * DRIFT_K;
+      ay += n.day * DRIFT_K;
+
+      /* edge softening — gentle push back from boundaries */
+      var margin = 40;
+      if (n.x < margin)   ax += (margin-n.x)*0.003;
+      if (n.x > W-margin) ax -= (n.x-(W-margin))*0.003;
+      if (n.y < margin)   ay += (margin-n.y)*0.003;
+      if (n.y > H*0.82)   ay -= (n.y-H*0.82)*0.003;
+
+      /* gravity well — continuous pull proportional to energy
+         softened so the center is still — no singularity         */
+      if (nuc.energy > 0.01) {
+        var gdx = nuc.gx-n.x, gdy = nuc.gy-n.y;
+        var gd  = Math.sqrt(gdx*gdx+gdy*gdy);
+        /* softened gravity: force = energy * K / (dist + softening)
+           feels like a bedsheet well — strongest just outside center,
+           very gentle far away, calm right at the nucleus             */
+        var gf = nuc.energy * GRAVITY_K / (gd + SOFTEN);
+        ax += (gdx/gd)*gf;
+        ay += (gdy/gd)*gf;
       }
-      var amp  = AMB_AMP * (1-stillness);
-      var ambX = Math.sin(t*n.spd+n.ph)*amp;
-      var ambY = Math.cos(t*n.spd*0.67+n.ph+1.4)*amp;
 
-      /* very weak spring home — gradual reversion, 1/8 feel */
-      var ax = (n.hx+ambX-n.x)*SPRING;
-      var ay = (n.hy+ambY-n.y)*SPRING;
-
-      /* idle repulsion — nodes drift apart organically, fades during convergence */
-      if (nuc.energy < 0.35) {
-        var rScale = 1 - nuc.energy/0.35;
-        for (var j = 0; j < nodes.length; j++) {
-          if (j===i) continue;
-          var rdx=n.x-nodes[j].x, rdy=n.y-nodes[j].y;
-          var rd2=rdx*rdx+rdy*rdy;
-          if (rd2 < REPEL_R*REPEL_R && rd2 > 0.25) {
-            var rd=Math.sqrt(rd2);
-            var rf=REPEL_K*(1-rd/REPEL_R)*rScale/rd;
-            ax+=rdx*rf; ay+=rdy*rf;
-          }
-        }
-      }
-
-      /* cursor gravity */
+      /* cursor — very gentle suggestion */
       if (mouse.on) {
         var mcx=smooth.x-n.x, mcy=smooth.y-n.y;
         var md=Math.sqrt(mcx*mcx+mcy*mcy);
-        if (md<CURSOR_R && md>0.5) {
-          var mf=CURSOR_K*(1-md/CURSOR_R)/md;
-          ax+=mcx*mf; ay+=mcy*mf;
+        if (md < CURSOR_R && md > 1) {
+          var mf = CURSOR_K*(1-md/CURSOR_R)/(md+30);
+          ax += mcx*mf; ay += mcy*mf;
         }
       }
 
-      /* teflon integration: high damping preserves momentum, forces are crisp */
+      /* fabric damping — medium, nodes move through material */
       n.vx = (n.vx+ax)*DAMP;
       n.vy = (n.vy+ay)*DAMP;
       n.x += n.vx; n.y += n.vy;
@@ -416,12 +400,12 @@
 
     /* edges */
     ctx.lineWidth=0.5;
-    for (var i = 0; i < nodes.length-1; i++) {
-      for (var j = i+1; j < nodes.length; j++) {
+    for (var i=0; i<nodes.length-1; i++) {
+      for (var j=i+1; j<nodes.length; j++) {
         var dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y;
         var d2=dx*dx+dy*dy;
         if (d2<LINK_DIST*LINK_DIST) {
-          ctx.strokeStyle='rgba('+AMBER+','+(1-Math.sqrt(d2)/LINK_DIST)*0.082+')';
+          ctx.strokeStyle='rgba('+AMBER+','+(1-Math.sqrt(d2)/LINK_DIST)*0.080+')';
           ctx.beginPath();
           ctx.moveTo(nodes[i].x,nodes[i].y);
           ctx.lineTo(nodes[j].x,nodes[j].y);
@@ -431,25 +415,25 @@
     }
 
     /* transaction pulses */
-    if (now>nextPulseAt && pulses.length<4) spawnPulse();
+    if (now>nextPulseAt && pulses.length<3) spawnPulse();
     for (var p=pulses.length-1; p>=0; p--) {
       var pu=pulses[p]; pu.t+=pu.spd;
       if (pu.t>=1) { pulses.splice(p,1); continue; }
       var na=nodes[pu.from], nb=nodes[pu.to];
-      var px2=na.x+(nb.x-na.x)*pu.t, py2=na.y+(nb.y-na.y)*pu.t;
+      var ppx=na.x+(nb.x-na.x)*pu.t, ppy=na.y+(nb.y-na.y)*pu.t;
       var env=pu.t<0.2?pu.t/0.2:pu.t>0.8?(1-pu.t)/0.2:1;
-      ctx.beginPath(); ctx.arc(px2,py2,1.5,0,Math.PI*2);
-      ctx.fillStyle='rgba('+SIENNA+','+(env*0.68)+')'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ppx,ppy,1.4,0,Math.PI*2);
+      ctx.fillStyle='rgba('+SIENNA+','+(env*0.62)+')'; ctx.fill();
     }
 
     /* ripples */
     for (var r=ripples.length-1; r>=0; r--) {
-      var rip=ripples[r]; rip.t+=0.022;
+      var rip=ripples[r]; rip.t+=0.016;
       if (rip.t>1) { ripples.splice(r,1); continue; }
       var ease=1-Math.pow(1-rip.t,3);
-      ctx.beginPath(); ctx.arc(rip.x,rip.y,ease*75,0,Math.PI*2);
-      ctx.strokeStyle='rgba('+SIENNA+','+((1-rip.t)*0.28)+')';
-      ctx.lineWidth=0.7; ctx.stroke();
+      ctx.beginPath(); ctx.arc(rip.x,rip.y,ease*60,0,Math.PI*2);
+      ctx.strokeStyle='rgba('+SIENNA+','+((1-rip.t)*0.22)+')';
+      ctx.lineWidth=0.6; ctx.stroke();
     }
 
     /* nodes */
@@ -457,14 +441,14 @@
       var n=nodes[i], w=WEIGHTS[n.wt], prox=0;
       if (mouse.on) {
         var mcx=smooth.x-n.x, mcy=smooth.y-n.y;
-        prox=Math.max(0,1-Math.sqrt(mcx*mcx+mcy*mcy)/CURSOR_R);
+        prox=Math.max(0,1-Math.sqrt(mcx*mcx+mcy*mcy)/CURSOR_R)*0.6;
       }
       if (nuc.energy>0.02) {
         var ndx=nuc.gx-n.x, ndy=nuc.gy-n.y;
-        prox=Math.max(prox,Math.max(0,1-Math.sqrt(ndx*ndx+ndy*ndy)/120)*nuc.energy);
+        prox=Math.max(prox,Math.max(0,1-Math.sqrt(ndx*ndx+ndy*ndy)/110)*nuc.energy);
       }
       ctx.beginPath();
-      ctx.arc(n.x,n.y,w.r+prox*0.9,0,Math.PI*2);
+      ctx.arc(n.x,n.y,w.r+prox*0.8,0,Math.PI*2);
       ctx.fillStyle='rgba('+SIENNA+','+(w.a0+prox*(w.a1-w.a0))+')';
       ctx.fill();
     }
@@ -481,14 +465,14 @@
   hero.addEventListener('mouseleave', function() { mouse.on=false; });
   hero.addEventListener('click',      function(e){
     var r=hero.getBoundingClientRect();
-    fireImpulse(e.clientX-r.left, e.clientY-r.top);
+    addSand(e.clientX-r.left, e.clientY-r.top);
   });
-  hero.addEventListener('touchmove',  function(e){
+  hero.addEventListener('touchmove', function(e){
     setMouse(e.touches[0].clientX,e.touches[0].clientY);
   },{ passive:true });
   hero.addEventListener('touchstart', function(e){
     var r=hero.getBoundingClientRect();
-    fireImpulse(e.touches[0].clientX-r.left, e.touches[0].clientY-r.top);
+    addSand(e.touches[0].clientX-r.left, e.touches[0].clientY-r.top);
     setMouse(e.touches[0].clientX,e.touches[0].clientY);
   },{ passive:true });
   hero.addEventListener('touchend', function(){ mouse.on=false; });
